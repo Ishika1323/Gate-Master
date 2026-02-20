@@ -12,9 +12,39 @@ const useAppStore = create(
                 theme: state.theme === 'dark' ? 'light' : 'dark'
             })),
 
-            // Current day (1-32)
-            currentDay: 1,
+            // Plan start date - stored to calculate current day
+            planStartDate: null,
+            setPlanStartDate: (date) => set({ planStartDate: date }),
+
+            // Current day (1-32) - calculated based on planStartDate
+            currentDay: (() => {
+                // This will be recalculated on initialization
+                return 1;
+            })(),
             setCurrentDay: (day) => set({ currentDay: day }),
+            initializeCurrentDay: () => {
+                const state = get();
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                
+                // If no planStartDate stored, set it to today and currentDay to 1
+                if (!state.planStartDate) {
+                    const todayStr = today.toISOString().split('T')[0];
+                    set({ planStartDate: todayStr, currentDay: 1 });
+                    return 1;
+                }
+                
+                // Calculate days since plan start
+                const startDate = new Date(state.planStartDate);
+                startDate.setHours(0, 0, 0, 0);
+                const diffTime = today - startDate;
+                const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                
+                // Current day is days since start + 1 (Day 1 is the start date)
+                const calculatedDay = Math.min(Math.max(diffDays + 1, 1), 32);
+                set({ currentDay: calculatedDay });
+                return calculatedDay;
+            },
 
             // Timer state
             timer: {
@@ -251,6 +281,21 @@ const useAppStore = create(
 
                 set({ completedSyllabusTopics: newCompleted });
                 import('../services/db').then(({ db }) => db.toggleSyllabusTopic(topicId, isCompleted));
+            },
+
+            // PYQ Coverage Tracking (subject-wise & topic-wise)
+            // Uses same ID format as syllabus topics but kept in a separate list
+            completedPyqTopics: [], // Array of PYQ topic IDs
+            togglePyqTopic: (topicId) => {
+                const current = get().completedPyqTopics || [];
+                const isCompleted = !current.includes(topicId);
+
+                const newCompleted = isCompleted
+                    ? [...current, topicId]
+                    : current.filter(id => id !== topicId);
+
+                set({ completedPyqTopics: newCompleted });
+                // Optional: sync to DB later with a dedicated table if needed
             },
 
             // Database Sync

@@ -1,4 +1,4 @@
-// 32-day study plan from Feb 18 to March 20, 2026
+// 32-day study plan - dates are dynamically calculated from today's date
 // Updated: 6-Session Structure (A, B, C: Main | D: Math | E: Aptitude | F: Revision)
 
 const getJobPrepTopic = (day) => {
@@ -36,9 +36,17 @@ const getMathTopic = (day) => {
     return topics[(day - 1) % topics.length];
 };
 
+// Calculate start date as today
+const getStartDate = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Normalize to start of day
+    return today;
+};
+
 export const STUDY_PLAN = Array.from({ length: 32 }, (_, i) => {
     const day = i + 1;
-    const date = new Date('2026-02-18');
+    const startDate = getStartDate();
+    const date = new Date(startDate);
     date.setDate(date.getDate() + i);
     const dateString = date.toISOString().split('T')[0];
     const jobTopic = getJobPrepTopic(day);

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Calendar, ChevronLeft, ChevronRight, CheckCircle2, Circle, Clock } from 'lucide-react';
 import Card from '../UI/Card';
 import Badge from '../UI/Badge';
@@ -7,10 +7,34 @@ import { getSubjectById } from '../../data/subjects';
 import useAppStore from '../../store/useAppStore';
 
 export default function StudyPlanPage() {
-    const { currentDay, planProgress, toggleSessionComplete } = useAppStore();
+    const { currentDay, planProgress, toggleSessionComplete, initializeCurrentDay } = useAppStore();
     const [viewDay, setViewDay] = useState(currentDay);
 
+    // Initialize current day on mount and sync viewDay with currentDay
+    useEffect(() => {
+        initializeCurrentDay();
+        const store = useAppStore.getState();
+        setViewDay(store.currentDay);
+    }, [initializeCurrentDay]);
+
+    // Sync viewDay when currentDay changes
+    useEffect(() => {
+        setViewDay(currentDay);
+    }, [currentDay]);
+
     const dayPlan = STUDY_PLAN.find(d => d.day === viewDay);
+
+    // Helper to format date for display
+    const formatDate = (dateString) => {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    };
+
+    // Helper to get day of month from date string
+    const getDayOfMonth = (dateString) => {
+        const date = new Date(dateString);
+        return date.getDate();
+    };
 
     // Helper to check if a specific session is done
     const isSessionDone = (sessionId) => {
@@ -68,17 +92,9 @@ export default function StudyPlanPage() {
                         <Calendar className="w-8 h-8 text-brand-600" />
                         32-Day Plan
                     </h1>
-                    <div className="flex items-center gap-2 mt-1">
-                        <p className="text-slate-500">
-                            Your roadmap to GATE success.
-                        </p>
-                        <button
-                            onClick={() => { useAppStore.getState().syncStudyPlan(); window.location.reload(); }}
-                            className="text-xs text-brand-600 underline hover:text-brand-700"
-                        >
-                            (Fix Buttons)
-                        </button>
-                    </div>
+                    <p className="text-slate-500 mt-1">
+                        Your roadmap to GATE success.
+                    </p>
                 </div>
 
                 <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
@@ -89,9 +105,16 @@ export default function StudyPlanPage() {
                     >
                         <ChevronLeft className="w-5 h-5 text-slate-600 dark:text-slate-400" />
                     </button>
-                    <span className="px-4 font-mono font-bold text-slate-900 dark:text-white">
-                        Day {viewDay}
-                    </span>
+                    <div className="px-4 text-center">
+                        <div className="font-mono font-bold text-slate-900 dark:text-white">
+                            Day {viewDay}
+                        </div>
+                        {dayPlan && (
+                            <div className="text-xs text-slate-500 dark:text-slate-400 font-normal">
+                                {formatDate(dayPlan.date)}
+                            </div>
+                        )}
+                    </div>
                     <button
                         onClick={() => setViewDay(Math.min(32, viewDay + 1))}
                         disabled={viewDay === 32}
@@ -112,7 +135,7 @@ export default function StudyPlanPage() {
                                     Day {viewDay} Agenda
                                 </h2>
                                 <p className="text-slate-500 dark:text-slate-400 font-medium">
-                                    {dayPlan.date}
+                                    {formatDate(dayPlan.date)}
                                 </p>
                             </div>
                             {viewDay === currentDay && (
@@ -172,21 +195,19 @@ export default function StudyPlanPage() {
                                                     {session.duration}m
                                                 </div>
 
-                                                {viewDay <= currentDay && (
-                                                    <button
-                                                        onClick={() => toggleSessionComplete(viewDay, session.id)}
-                                                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all w-full flex items-center justify-center gap-2 ${done
-                                                            ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400'
-                                                            : 'bg-brand-600 text-white hover:bg-brand-700 shadow-sm hover:shadow-brand-500/20'
-                                                            }`}
-                                                    >
-                                                        {done ? (
-                                                            <>Completed <CheckCircle2 className="w-4 h-4" /></>
-                                                        ) : (
-                                                            <>Mark Done <Circle className="w-4 h-4 opacity-50" /></>
-                                                        )}
-                                                    </button>
-                                                )}
+                                                <button
+                                                    onClick={() => toggleSessionComplete(viewDay, session.id)}
+                                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all w-full flex items-center justify-center gap-2 ${done
+                                                        ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400'
+                                                        : 'bg-brand-600 text-white hover:bg-brand-700 shadow-sm hover:shadow-brand-500/20'
+                                                        }`}
+                                                >
+                                                    {done ? (
+                                                        <>Completed <CheckCircle2 className="w-4 h-4" /></>
+                                                    ) : (
+                                                        <>Mark Done <Circle className="w-4 h-4 opacity-50" /></>
+                                                    )}
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
@@ -216,14 +237,18 @@ export default function StudyPlanPage() {
                                 if (isCurrent) bgClass += " ring-2 ring-brand-500 ring-offset-1 dark:ring-offset-slate-900";
                                 if (isSelected) bgClass = "bg-brand-600 text-white shadow-md transform scale-105 z-10";
 
+                                const dayOfMonth = getDayOfMonth(day.date);
+                                const monthAbbr = new Date(day.date).toLocaleDateString('en-US', { month: 'short' });
+
                                 return (
                                     <button
                                         key={day.day}
                                         onClick={() => setViewDay(day.day)}
                                         className={`aspect-square rounded-md text-xs font-bold transition-all flex flex-col items-center justify-center ${bgClass}`}
-                                        title={`Day ${day.day}`}
+                                        title={`Day ${day.day} - ${formatDate(day.date)}`}
                                     >
-                                        {day.day}
+                                        <span className="text-base">{dayOfMonth}</span>
+                                        <span className="text-[9px] opacity-70 font-normal">{monthAbbr}</span>
                                     </button>
                                 );
                             })}

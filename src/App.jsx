@@ -13,9 +13,11 @@ import './styles/index.css';
 
 
 function App() {
-  const { theme, hydrateFromDb, syncStudyPlan } = useAppStore();
+  const { theme, hydrateFromDb, syncStudyPlan, initializeCurrentDay } = useAppStore();
 
   useEffect(() => {
+    // Initialize current day based on today's date
+    initializeCurrentDay();
     // Sync with DB on load
     hydrateFromDb();
     // Ensure local storage plan matches current code structure
@@ -26,7 +28,7 @@ function App() {
     } else {
       document.documentElement.classList.remove('dark');
     }
-  }, [theme]);
+  }, [theme, initializeCurrentDay]);
 
   // Original Layout Logic
   return (

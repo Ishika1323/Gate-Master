@@ -52,27 +52,41 @@ const useAppStore = create(
             initializeCurrentDay: () => {
                 const state = get();
                 const today = getEffectiveToday();
+                const envStart = import.meta.env.VITE_PLAN_START_DATE;
                 
-                if (!state.planStartDate) {
-                    const todayStr = today.getFullYear() + '-' + 
-                                     String(today.getMonth() + 1).padStart(2, '0') + '-' + 
-                                     String(today.getDate()).padStart(2, '0');
-                    set({ planStartDate: todayStr, currentDay: 1 });
-                    
-                    // Upload the new anchor to Supabase so other devices inherit it permanently
+                let activeStart = state.planStartDate;
+                
+                // 1. Env Var Master Override
+                if (envStart && activeStart !== envStart) {
+                    activeStart = envStart;
+                    set({ planStartDate: activeStart });
+                    // Anchor it publicly to Supabase
                     import('../lib/supabase').then(({ supabase }) => {
                         if (supabase && state.session?.user) {
                             supabase.auth.updateUser({
-                                data: { plan_start_date: todayStr }
+                                data: { plan_start_date: activeStart }
                             });
                         }
                     });
-
-                    return 1;
+                } 
+                // 2. Pure Fallback
+                else if (!activeStart) {
+                    activeStart = today.getFullYear() + '-' + 
+                                     String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+                                     String(today.getDate()).padStart(2, '0');
+                    set({ planStartDate: activeStart });
+                    
+                    import('../lib/supabase').then(({ supabase }) => {
+                        if (supabase && state.session?.user) {
+                            supabase.auth.updateUser({
+                                data: { plan_start_date: activeStart }
+                            });
+                        }
+                    });
                 }
                 
                 // Calculate days since plan start natively in Local Time to prevent UTC bugs
-                const parts = state.planStartDate.split('-');
+                const parts = activeStart.split('-');
                 const startDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
                 startDate.setHours(0, 0, 0, 0);
                 

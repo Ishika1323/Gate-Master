@@ -79,8 +79,18 @@ function App() {
     if (supabase) {
         // 1. Register the auth state change listener FIRST so we never miss
         //    the SIGNED_IN event that fires on OAuth redirect callbacks.
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
             useAppStore.getState().setAuth(session);
+            
+            // Sync plan_start_date from metadata or push local state up
+            const state = useAppStore.getState();
+            const metaStart = session?.user?.user_metadata?.plan_start_date;
+            if (metaStart && !state.planStartDate) {
+                state.setPlanStartDate(metaStart);
+            } else if (state.planStartDate && metaStart !== state.planStartDate) {
+                await supabase.auth.updateUser({ data: { plan_start_date: state.planStartDate } });
+            }
+
             // Trigger data load on sign-in to handle post-OAuth redirect
             if (_event === 'SIGNED_IN' || _event === 'TOKEN_REFRESHED') {
                 void load();
@@ -89,8 +99,17 @@ function App() {
 
         // 2. Then check for an existing session. This handles page refreshes
         //    where the user is already authenticated.
-        supabase.auth.getSession().then(({ data: { session } }) => {
+        supabase.auth.getSession().then(async ({ data: { session } }) => {
             useAppStore.getState().setAuth(session);
+            
+            const state = useAppStore.getState();
+            const metaStart = session?.user?.user_metadata?.plan_start_date;
+            if (metaStart && !state.planStartDate) {
+                state.setPlanStartDate(metaStart);
+            } else if (state.planStartDate && metaStart !== state.planStartDate && session) {
+                await supabase.auth.updateUser({ data: { plan_start_date: state.planStartDate } });
+            }
+            
             // Load data after we know the auth state
             void load();
         });

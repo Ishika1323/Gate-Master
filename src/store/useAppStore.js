@@ -58,6 +58,16 @@ const useAppStore = create(
                                      String(today.getMonth() + 1).padStart(2, '0') + '-' + 
                                      String(today.getDate()).padStart(2, '0');
                     set({ planStartDate: todayStr, currentDay: 1 });
+                    
+                    // Upload the new anchor to Supabase so other devices inherit it permanently
+                    import('../lib/supabase').then(({ supabase }) => {
+                        if (supabase && state.session?.user) {
+                            supabase.auth.updateUser({
+                                data: { plan_start_date: todayStr }
+                            });
+                        }
+                    });
+
                     return 1;
                 }
                 

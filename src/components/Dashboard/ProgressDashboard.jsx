@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Calendar, Clock, TrendingUp, AlertCircle, Brain, Target, ArrowRight } from 'lucide-react';
 import useAppStore from '../../store/useAppStore';
 import Card from '../UI/Card';
@@ -7,35 +7,48 @@ import Badge from '../UI/Badge';
 import { aiCoach } from '../../ai/aiCoach';
 import { adaptiveEngine } from '../../ai/adaptiveEngine';
 import { taskSuggester } from '../../ai/taskSuggester';
-import { getDaysUntilExam } from '../../utils/dateUtils';
+import { buildStudyPlan, defaultPlanStart, STUDY_PLAN_TOTAL_DAYS } from '../../data/studyPlan';
+import { useMasterStudyPlan } from '../../hooks/useMasterStudyPlan';
+import { useGateExamDates } from '../../hooks/useGateExamDates';
+import { getDaysLeftLabel } from '../../utils/gateExamDates';
+import { getEffectiveToday } from '../../utils/dayBoundary';
 import { useNavigate } from 'react-router-dom';
+
+import TodaySchedulePanel from './TodaySchedulePanel';
+import SubjectProgressGrid from './SubjectProgressGrid';
+import SyllabusHeatmap from './SyllabusHeatmap';
+import PYQTrackerPanel from './PYQTrackerPanel';
+import ScheduleProjectionChart from './ScheduleProjectionChart';
 
 export default function ProgressDashboard() {
     const navigate = useNavigate();
+    const { gateCse } = useGateExamDates();
     const {
         currentDay,
+        planStartDate,
         tasks,
         pyqAttempts,
         sessions,
         mistakes,
         dailyTip,
         setDailyTip,
-        completedSyllabusTopics // Select this
+        completedSyllabusTopics,
+        completedPyqTopics,
+        planProgress
     } = useAppStore();
 
-    // ...
+    const studyPlan = useMasterStudyPlan();
+    const dayPlan = useMemo(() => studyPlan.find(d => d.day === currentDay) || studyPlan[0], [studyPlan, currentDay]);
 
-    // Approx total subtopics is ~400 based on the data file. 
-    // For exactness we could import SYLLABUS_DATA but for the dashboard summary 400 is a safe upper bound estimate for now to save imports
-    // actually let's just show count
     const syllabusCount = completedSyllabusTopics.length;
 
     useEffect(() => {
         const tip = aiCoach.generateDailyTip(currentDay, tasks, pyqAttempts, sessions);
         setDailyTip(tip);
-    }, [currentDay, tasks.length, pyqAttempts.length]);
+    }, [currentDay, planStartDate, tasks.length, pyqAttempts.length, setDailyTip]);
 
-    const daysUntilExam = getDaysUntilExam();
+    const cseCountdown = getDaysLeftLabel(gateCse);
+    const daysUntilExamDisplay = cseCountdown.days < 0 ? '—' : cseCountdown.days;
     const totalHours = sessions.reduce((sum, s) => sum + s.duration / 60, 0);
     const completedTasks = tasks.filter(t => t.completed).length;
     const readinessScore = adaptiveEngine.calculateReadinessScore(
@@ -46,16 +59,16 @@ export default function ProgressDashboard() {
         tasks
     );
 
-    const recommendation = aiCoach.getDailyRecommendation(currentDay, {}, tasks);
-    const strategicAdvice = aiCoach.getStrategicAdvice(currentDay);
+    const recommendation = aiCoach.getDailyRecommendation(currentDay, {}, tasks, planStartDate);
+    const strategicAdvice = aiCoach.getStrategicAdvice(currentDay, planStartDate);
     const weakAreas = adaptiveEngine.identifyWeakAreas(pyqAttempts, {});
 
     // Get AI suggested tasks (max 3)
     const suggestedTasks = taskSuggester.getSuggestedTasks(tasks, pyqAttempts, currentDay, {}, 3);
 
     return (
-        <div className="space-y-6 animate-fade-in">
-            {/* Hero Section */}
+        <div className="space-y-6 animate-fade-in pb-10">
+            {/* HERO SECTION / LANDING PAGE */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Welcome & Readiness */}
                 <div className="lg:col-span-2">
@@ -84,7 +97,10 @@ export default function ProgressDashboard() {
                                 <div>
                                     <div className="text-brand-200 text-sm font-medium mb-1 uppercase tracking-wider">Day</div>
                                     <div className="text-3xl font-mono font-bold">
-                                        {currentDay}<span className="text-brand-300 text-lg">/32</span>
+                                        {currentDay}<span className="text-brand-300 text-lg">/{STUDY_PLAN_TOTAL_DAYS}</span>
+                                    </div>
+                                    <div className="text-brand-300 text-xs mt-1 font-medium bg-brand-900/40 px-2 py-0.5 rounded-full w-fit">
+                                        {getEffectiveToday().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
                                     </div>
                                 </div>
                             </div>
@@ -99,10 +115,10 @@ export default function ProgressDashboard() {
                             <div className="p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded-lg">
                                 <Calendar size={18} />
                             </div>
-                            <span className="text-xs font-medium text-slate-400">Days Left</span>
+                            <span className="text-xs font-medium text-slate-400">Days to GATE CSE</span>
                         </div>
                         <div className="mt-3">
-                            <div className="stat-value text-slate-900 dark:text-white">{daysUntilExam}</div>
+                            <div className="stat-value text-slate-900 dark:text-white">{daysUntilExamDisplay}</div>
                         </div>
                     </div>
 
@@ -281,20 +297,20 @@ export default function ProgressDashboard() {
                                 <h4 className="font-semibold text-slate-900 dark:text-white text-sm mb-2">⏰ Daily Structure (10.5h)</h4>
                                 <div className="space-y-2 text-xs">
                                     <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 p-2 rounded">
-                                        <span className="font-medium">Sessions A, B, C (6h)</span>
-                                        <span className="text-slate-500">Main Subject (2h each)</span>
+                                        <span className="font-medium">L1 & L2 (4h)</span>
+                                        <span className="text-slate-500">Core Lectures (2h each)</span>
                                     </div>
                                     <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 p-2 rounded">
-                                        <span className="font-medium">Session D (3h)</span>
-                                        <span className="text-brand-600 font-medium">Engineering Math</span>
+                                        <span className="font-medium">P1 & P2 (4h)</span>
+                                        <span className="text-brand-600 font-medium">PYQ Training (2h each)</span>
                                     </div>
                                     <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 p-2 rounded">
-                                        <span className="font-medium">Session E (1h)</span>
-                                        <span className="text-slate-500">Aptitude (GATE + Job)</span>
+                                        <span className="font-medium">Session M (2h)</span>
+                                        <span className="text-slate-500">Engineering Math</span>
                                     </div>
                                     <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 p-2 rounded">
-                                        <span className="font-medium">Session F (30m)</span>
-                                        <span className="text-slate-500">Mistakes + Revision</span>
+                                        <span className="font-medium">Session R (30m)</span>
+                                        <span className="text-slate-500">Reflection & Mistakes</span>
                                     </div>
                                 </div>
                             </div>
@@ -305,13 +321,59 @@ export default function ProgressDashboard() {
                         <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Quick Actions</h3>
                         <div className="grid grid-cols-2 gap-2">
                             <Button variant="outline" size="sm" onClick={() => navigate('/pyq')}>Log PYQ</Button>
+                            <Button variant="outline" size="sm" onClick={() => navigate('/topics')}>Topic Board</Button>
                             <Button variant="outline" size="sm" onClick={() => navigate('/tasks')}>Add Task</Button>
                             <Button variant="outline" size="sm" onClick={() => navigate('/plan')}>Study Plan</Button>
-                            <Button variant="outline" size="sm" onClick={() => navigate('/analytics')}>Analytics</Button>
                         </div>
                     </Card>
                 </div>
             </div>
+
+            {/* --- DETAILED PROGRESS TRACKING SECTIONS (New Additions) --- */}
+            <div className="mt-12 mb-8 pt-8 border-t border-slate-200 dark:border-slate-800">
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Detailed Progress Tracking</h2>
+                <p className="text-slate-500">Real-time schedule projections, execution heatmap, and subject mastery tracking.</p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                {/* A. Today's Schedule Panel */}
+                <div className="lg:col-span-1">
+                    <TodaySchedulePanel 
+                        currentDay={currentDay}
+                        dayPlan={dayPlan}
+                        planProgress={planProgress}
+                        studyPlan={studyPlan}
+                    />
+                </div>
+
+                {/* B. Subject-wise Progress Grid */}
+                <div className="lg:col-span-2">
+                    <SubjectProgressGrid 
+                        completedSyllabusTopics={completedSyllabusTopics}
+                        completedPyqTopics={completedPyqTopics}
+                    />
+                </div>
+            </div>
+
+            {/* E. Schedule Projection Chart */}
+            <ScheduleProjectionChart 
+                currentDay={currentDay}
+                planProgress={planProgress}
+                totalDays={STUDY_PLAN_TOTAL_DAYS}
+            />
+
+            {/* C. Overall Syllabus Heatmap */}
+            <SyllabusHeatmap 
+                totalDays={STUDY_PLAN_TOTAL_DAYS}
+                currentDay={currentDay}
+                planProgress={planProgress}
+            />
+
+            {/* D. PYQ Tracker Panel */}
+            <PYQTrackerPanel 
+                pyqAttempts={pyqAttempts}
+            />
         </div>
     );
 }

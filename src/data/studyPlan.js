@@ -1,105 +1,334 @@
-// 32-day study plan - dates are dynamically calculated from today's date
-// Updated: 6-Session Structure (A, B, C: Main | D: Math | E: Aptitude | F: Revision)
+/**
+ * 311-day planner: Structured multi-track GATE preparation.
+ * (Feb–Sep) monthly deep-dives, October+ test series.
+ * Dates follow planStartDate from the store.
+ *
+ * DAILY SESSION FORMAT:
+ *   L1  — Lecture 1: Primary subject (2 h)
+ *   L2  — Lecture 2: Secondary subject (2 h)
+ *   P1  — PYQ Session 1: Primary subject PYQs (2 h)
+ *   P2  — PYQ Session 2: Secondary subject PYQs (2 h)
+ *   M   — Engineering Mathematics: Alternating topic (2 h)
+ *   R   — Daily Reflection & Mistake Logging (30 min)
+ */
 
-const getJobPrepTopic = (day) => {
-    const topics = [
-        'Resume Building & Optimization', 'Speed Math Tricks', 'Puzzle Solving (Seating Arrangement)',
-        'Coding Interview Pattern: Sliding Window', 'HR Qs: "Tell me about yourself"', 'Quantitative: Percentages',
-        'Logical Reasoning: Blood Relations', 'Verbal: Reading Comprehension', 'Coding Interview: Two Pointers',
-        'System Design: Scalability Basics', 'Behavioral: STAR Method', 'Quantitative: Time & Work',
-        'Logical Reasoning: Syllogisms', 'Verbal: Grammar Correction', 'Coding Interview: DFS/BFS Patterns',
-        'System Design: Caching Strategies', 'HR Qs: Strengths & Weaknesses', 'Quantitative: Profit & Loss',
-        'Logical Reasoning: Data Sufficiency', 'Verbal: Vocabulary Building', 'Coding Interview: DP Patterns',
-        'System Design: Database Sharding', 'Mock Interview Practice (Self)', 'Quantitative: Permutation & Combination',
-        'Logical Reasoning: Series Completion', 'Verbal: Critical Reasoning', 'Coding Interview: Graph Patterns',
-        'System Design: Load Balancing', 'HR Qs: Handling Conflict', 'Quantitative: Probability (Aptitude)',
-        'Logical Reasoning: Clocks & Calendars', 'Final Resume Polish'
-    ];
-    return topics[(day - 1) % topics.length];
-};
+import {
+    addPlanDays,
+    buildCatchupQueue,
+    buildWaveDaySessions,
+    calendarMonthOf,
+    getMissedWaveMonths,
+    isTestSeriesPhase,
+    monthName,
+    WAVE_MONTHS,
+} from './calendarCurriculum';
+import { getMathAlternatingTopic } from './detailedCurriculum';
+import { TEST_SERIES } from './testSeries';
 
-const getMathTopic = (day) => {
-    // Rotating GATE CS Math Syllabus
-    const topics = [
-        'Linear Algebra: Matrices & Determinants', 'Linear Algebra: Eigenvalues & Vectors', 'Linear Algebra: LU Decomposition',
-        'Calculus: Limits & Continuity', 'Calculus: Differentiability', 'Calculus: Mean Value Theorems',
-        'Calculus: Definite Integrals', 'Probability: Axioms & Cond. Probability', 'Probability: Random Variables',
-        'Probability: Distributions (Binomial, Poisson)', 'Probability: Distributions (Normal, Exp)', 'Probability: Statistics (Mean, Mode, Median)',
-        'Discrete Math: Prop. Logic', 'Discrete Math: Predicate Logic', 'Discrete Math: Set Theory',
-        'Discrete Math: Relations & Functions', 'Discrete Math: Partial Orders & Lattices', 'Discrete Math: Groups & Monoids',
-        'Discrete Math: Graph Theory Basics', 'Discrete Math: Graph Connectivity', 'Discrete Math: Graph Coloring',
-        'Linear Algebra: Vector Spaces', 'Linear Algebra: Basis & Dimension', 'Calculus: Maxima & Minima',
-        'Probability: Bayes Theorem', 'Probability: Correlation & Regression', 'Discrete Math: Combinatorics',
-        'Discrete Math: Recurrence Relations', 'Discrete Math: Generating Functions', 'Math Revision: Formula Sheet 1',
-        'Math Revision: Formula Sheet 2', 'Math Full Mock'
-    ];
-    return topics[(day - 1) % topics.length];
-};
+export const STUDY_PLAN_TOTAL_DAYS = 311;
+export const STUDY_PLAN_EXAM_DAY = STUDY_PLAN_TOTAL_DAYS;
 
-// Calculate start date as today
-const getStartDate = () => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Normalize to start of day
-    return today;
-};
+export function planDateKey(planStartISO, dayIndex0) {
+    return addPlanDays(planStartISO, dayIndex0).toISOString().split('T')[0];
+}
 
-export const STUDY_PLAN = Array.from({ length: 32 }, (_, i) => {
-    const day = i + 1;
-    const startDate = getStartDate();
-    const date = new Date(startDate);
-    date.setDate(date.getDate() + i);
-    const dateString = date.toISOString().split('T')[0];
-    const jobTopic = getJobPrepTopic(day);
-    const mathTopic = getMathTopic(day);
-
-    let mainSubject = 'ds';
-    let mainTopics = [];
-
-    // Map main subjects based on the original Phase Plan
-    if (day <= 3) { mainSubject = 'ds'; mainTopics = ['Data Structures Core', 'Advanced Trees', 'Graphs']; }
-    else if (day <= 6) { mainSubject = 'algo'; mainTopics = ['Sorting & Searching', 'Greedy Algorithms', 'Dynamic Programming']; }
-    else if (day === 7) { mainSubject = 'c_prog'; mainTopics = ['Pointers & Arrays', 'Recursion', 'Memory Management']; }
-    else if (day <= 9) { mainSubject = 'math'; mainTopics = ['Discrete Mathematics', 'Boolean Algebra', 'Digital Logic']; } // Overlap with Math session is fine, extra focus
-    else if (day <= 12) { mainSubject = 'os'; mainTopics = ['Process Management', 'Deadlocks & Sync', 'Memory Management']; }
-    else if (day <= 14) { mainSubject = 'dbms'; mainTopics = ['SQL & Relational Algebra', 'Normalization & Transactions', 'Indexing & File Org']; }
-    else if (day === 15) { mainSubject = 'cn'; mainTopics = ['IP Addressing & Subnetting', 'TCP/UDP', 'Application Layer']; }
-    else if (day <= 17) { mainSubject = 'coa'; mainTopics = ['Cache Memory', 'Pipelining', 'Instruction Cycle']; }
-    else if (day <= 19) { mainSubject = 'toc'; mainTopics = ['Finite Automata', 'Context Free Grammars', 'Turing Machines']; }
-    else if (day === 20) { mainSubject = 'compiler'; mainTopics = ['Parsing Techniques', 'Syntax Directed Translation', 'Code Optimization']; }
-    else if (day <= 24) { mainSubject = 'all'; mainTopics = [`BARC Set ${day - 20}`, 'Weak Area Analysis', 'Topic Repair']; } // BARC Sets
-    else if (day === 25) { mainSubject = 'all'; mainTopics = ['Weak Area Deep Dive', 'Concept Patching', 'Wrong PYQ Re-solve']; }
-    else if (day <= 27) { mainSubject = 'all'; mainTopics = [`BARC Full Paper ${day - 25}`, 'Deep Analysis', 'Mistake Review']; }
-    else if (day <= 30) { mainSubject = 'all'; mainTopics = ['Rapid Revision: Set A', 'Rapid Revision: Set B', 'Rapid Revision: Set C']; }
-    else { mainSubject = 'all'; mainTopics = ['Final Formula Revision', 'Light Reading', 'Relaxation']; }
-
-    // On exam day (Day 32), strict exam schedule
-    if (day === 32) {
+/** @param {string} planStartISO - YYYY-MM-DD */
+export function getStudyPlanPhase(day, planStartISO) {
+    const start = planStartISO || new Date().toISOString().split('T')[0];
+    if (day >= STUDY_PLAN_EXAM_DAY) {
         return {
-            day, date: dateString,
-            sessions: [
-                { id: 'A', duration: 180, subject: 'all', topics: ['GATE EXAM'], type: 'exam' },
-            ]
+            key: 'exam',
+            title: 'GATE Exam Day',
+            subtitle: 'Final execution: stay calm, strategic time management',
+        };
+    }
+    const date = addPlanDays(start, day - 1);
+    const cm = calendarMonthOf(date);
+    if (isTestSeriesPhase(date)) {
+        const missed = getMissedWaveMonths(start);
+        return {
+            key: 'testseries',
+            title: `Test Season · ${monthName(cm)}`,
+            subtitle:
+                missed.length > 0
+                    ? `Timed mocks + Catch-up for: ${missed.map(monthName).join(', ')}`
+                    : 'Systematic Mock Tests & performance profiling',
+        };
+    }
+    if (WAVE_MONTHS.includes(cm)) {
+        return {
+            key: 'wave',
+            title: `${monthName(cm)} · Core Curriculum`,
+            subtitle: 'Intensive monthly subject deep-dives',
+        };
+    }
+    return {
+        key: 'ramp',
+        title: 'Foundation Ramp-up',
+        subtitle: 'Building core habits: Math, Aptitude & Problem Solving',
+    };
+}
+
+function bridgeRampSessions(day) {
+    const mathTopic = getMathAlternatingTopic(day);
+    return [
+        {
+            id: 'L1',
+            duration: 120,
+            subject: 'ds',
+            topics: [
+                'Data Structures Foundation: Arrays, Linked Lists & Complexity',
+                '📖 Big-O analysis of standard operations',
+                '📝 Create template notes for DS patterns',
+            ],
+            type: 'study',
+        },
+        {
+            id: 'L2',
+            duration: 120,
+            subject: 'math',
+            topics: [
+                'Discrete Math Foundations: Set Theory & Logic Basics',
+                '📖 Proof techniques: Direct, Contradiction, Induction',
+                '📝 Key definitions & theorem list',
+            ],
+            type: 'study',
+        },
+        {
+            id: 'P1',
+            duration: 120,
+            subject: 'ds',
+            topics: [
+                'PYQ Practice: Stack & Queue Implementations',
+                '⏱️ Timed drill — 25 GATE PYQs',
+                '📊 Mistake log & pattern identification',
+            ],
+            type: 'pyq',
+        },
+        {
+            id: 'P2',
+            duration: 120,
+            subject: 'math',
+            topics: [
+                'PYQ Practice: Discrete Mathematics Basics',
+                '⏱️ Timed drill — 25 GATE PYQs',
+                '📊 Error tagging & accuracy tracking',
+            ],
+            type: 'pyq',
+        },
+        {
+            id: 'M',
+            duration: 120,
+            subject: 'math',
+            topics: [
+                `Eng. Math — ${mathTopic.label}: ${mathTopic.subtopic}`,
+                '📖 Theory + formula review + solved examples',
+                '📝 Practice 10–15 GATE-level numerical problems',
+            ],
+            type: 'practice',
+        },
+        {
+            id: 'R',
+            duration: 30,
+            subject: 'all',
+            topics: [
+                'Daily Reflection: Log 3 key mistakes & weak points',
+                'Set tomorrow\'s priority objectives',
+            ],
+            type: 'revision',
+        },
+    ];
+}
+
+/**
+ * @param {{ catchupQueue: Array, catchIdx: { i: number }, testIdx: { i: number } }} ctx
+ */
+function buildTestSeriesMain(ctx, day, date) {
+    const { catchupQueue, catchIdx, testIdx } = ctx;
+    const mathTopic = getMathAlternatingTopic(day);
+
+    let sessionL1;
+    if (catchIdx.i < catchupQueue.length) {
+        const b = catchupQueue[catchIdx.i];
+        catchIdx.i += 1;
+        sessionL1 = {
+            id: 'L1',
+            duration: 120,
+            subject: b.sub,
+            topics: [
+                `Catch-up: ${b.label} (missed from ${monthName(b.sourceMonth)})`,
+                '📖 Compressed review of key topics & theorems',
+                '📝 Selective Top-50 PYQ rapid practice',
+            ],
+            type: 'study',
+        };
+    } else {
+        sessionL1 = {
+            id: 'L1',
+            duration: 120,
+            subject: 'all',
+            topics: [
+                'Subject-wise Revision Sweep (High-weightage Topics)',
+                '📖 Formula Sheet Active Recall & Flash Cards',
+                '📝 Conceptual Gap Analysis (No new theory)',
+            ],
+            type: 'revision',
         };
     }
 
-    return {
-        day,
-        date: dateString,
-        sessions: [
-            { id: 'A', duration: 120, subject: mainSubject, topics: [mainTopics[0] || 'Concept Review'], type: 'study' },
-            { id: 'B', duration: 120, subject: mainSubject, topics: [mainTopics[1] || 'PYQ Solving'], type: 'pyq' },
-            { id: 'C', duration: 120, subject: mainSubject, topics: [mainTopics[2] || 'Advanced Problems'], type: 'pyq' },
-            { id: 'D', duration: 180, subject: 'math', topics: [mathTopic], type: 'practice' },
-            { id: 'E', duration: 60, subject: 'aptitude', topics: ['GATE Aptitude', `Job Prep: ${jobTopic}`], type: 'practice' },
-            { id: 'F', duration: 30, subject: 'all', topics: ['Mistake Notebook', 'Error Analysis'], type: 'revision' },
+    // Second catch-up or revision
+    let sessionL2;
+    if (catchIdx.i < catchupQueue.length) {
+        const b = catchupQueue[catchIdx.i];
+        catchIdx.i += 1;
+        sessionL2 = {
+            id: 'L2',
+            duration: 120,
+            subject: b.sub,
+            topics: [
+                `Catch-up: ${b.label} (missed from ${monthName(b.sourceMonth)})`,
+                '📖 Rapid review & key pattern recognition',
+                '📝 Weak-point identification & targeted practice',
+            ],
+            type: 'study',
+        };
+    } else {
+        sessionL2 = {
+            id: 'L2',
+            duration: 120,
+            subject: 'all',
+            topics: [
+                'Cross-subject Revision: Interconnected Concepts',
+                '📖 Review notes from previous months',
+                '📝 Fill gaps identified from mock test analysis',
+            ],
+            type: 'revision',
+        };
+    }
+
+    const test = TEST_SERIES[testIdx.i % TEST_SERIES.length];
+    testIdx.i += 1;
+    const bDur = Math.min(test.durationMin, 180);
+
+    const sessionP1 = {
+        id: 'P1',
+        duration: bDur,
+        subject: 'all',
+        topics: [
+            `Mock Test: ${test.name}`,
+            `📋 Focus: ${test.topic}`,
+            `⏱️ ${test.marks} marks · Strict timer execution`,
         ],
+        type: 'test',
     };
-});
 
-export const getDayPlan = (dayNumber) => {
-    return STUDY_PLAN.find(d => d.day === dayNumber);
-};
+    const sessionP2 = {
+        id: 'P2',
+        duration: Math.min(120, Math.max(60, 240 - bDur)),
+        subject: 'all',
+        topics: [
+            'Post-test: Deep Error Taxonomy & Analysis',
+            '📊 Numerical/Calculative mistake review',
+            '📝 Solution review for every missed question',
+        ],
+        type: 'revision',
+    };
 
-export const getPlanByDate = (dateString) => {
-    return STUDY_PLAN.find(d => d.date === dateString);
-};
+    const sessionM = {
+        id: 'M',
+        duration: 120,
+        subject: 'math',
+        topics: [
+            `Eng. Math — ${mathTopic.label}: ${mathTopic.subtopic}`,
+            '📖 Theory + formula review + solved examples',
+            '📝 Practice 10–15 GATE-level numerical problems',
+        ],
+        type: 'practice',
+    };
+
+    const sessionR = {
+        id: 'R',
+        duration: 30,
+        subject: 'all',
+        topics: [
+            'Daily Reflection: Log 3 key mistakes & weak points',
+            'Set tomorrow\'s priority objectives',
+        ],
+        type: 'revision',
+    };
+
+    return [sessionL1, sessionL2, sessionP1, sessionP2, sessionM, sessionR];
+}
+
+/**
+ * Build full plan from canonical start date (store planStartDate).
+ */
+export function buildStudyPlan(planStartISO) {
+    const start = planStartISO || new Date().toISOString().split('T')[0];
+    const catchupQueue = buildCatchupQueue(start);
+    const ctx = {
+        catchupQueue,
+        catchIdx: { i: 0 },
+        testIdx: { i: 0 },
+    };
+
+    const days = [];
+    for (let day = 1; day <= STUDY_PLAN_TOTAL_DAYS; day++) {
+        const date = addPlanDays(start, day - 1);
+        const dateString = planDateKey(start, day - 1);
+        const phase = getStudyPlanPhase(day, start);
+
+        if (day === STUDY_PLAN_EXAM_DAY) {
+            days.push({
+                day,
+                date: dateString,
+                phase: phase.title,
+                phaseSubtitle: phase.subtitle,
+                sessions: [
+                    {
+                        id: 'L1',
+                        duration: 180,
+                        subject: 'all',
+                        topics: ['GATE Exam: Strategic execution, report early, keep mindset positive'],
+                        type: 'exam',
+                    },
+                ],
+            });
+            continue;
+        }
+
+        let sessions;
+        const cm = calendarMonthOf(date);
+
+        if (isTestSeriesPhase(date)) {
+            sessions = buildTestSeriesMain(ctx, day, date);
+        } else if (WAVE_MONTHS.includes(cm)) {
+            sessions = buildWaveDaySessions(cm, day, start);
+        } else {
+            sessions = bridgeRampSessions(day);
+        }
+
+        days.push({
+            day,
+            date: dateString,
+            phase: phase.title,
+            phaseSubtitle: phase.subtitle,
+            sessions: sessions || bridgeRampSessions(day),
+        });
+    }
+
+    return days;
+}
+
+export function defaultPlanStart() {
+    return '2026-04-03';
+}
+
+/** Fallback for code paths that do not yet read planStartDate */
+export const STUDY_PLAN = buildStudyPlan(defaultPlanStart());
+
+export const getDayPlan = (dayNumber, planStartISO) =>
+    buildStudyPlan(planStartISO || defaultPlanStart()).find((d) => d.day === dayNumber);
+
+export const getPlanByDate = (dateString, planStartISO) =>
+    buildStudyPlan(planStartISO || defaultPlanStart()).find((d) => d.date === dateString);

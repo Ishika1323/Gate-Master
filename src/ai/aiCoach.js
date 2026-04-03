@@ -1,5 +1,7 @@
 // AI Coach that provides daily tips, recommendations, and strategic advice
 
+import { getStudyPlanPhase, STUDY_PLAN_TOTAL_DAYS } from '../data/studyPlan';
+
 const motivationalMessages = [
     "You're making excellent progress! Stay focused and trust your preparation.",
     "Consistency is key. Every hour of focused study counts!",
@@ -17,29 +19,48 @@ const lowValueTopics = {
 };
 
 export const aiCoach = {
-    // Generate daily recommendation based on day and performance
-    getDailyRecommendation: (currentDay, subjectStats, tasks) => {
-        const daysRemaining = 32 - currentDay;
+    // Generate daily recommendation based on day and performance (planStartISO = YYYY-MM-DD from store)
+    getDailyRecommendation: (currentDay, subjectStats, tasks, planStartISO) => {
+        const phase = getStudyPlanPhase(currentDay, planStartISO);
+        const daysRemaining = STUDY_PLAN_TOTAL_DAYS - currentDay;
 
-        if (currentDay <= 17) {
+        if (phase.key === 'exam') {
             return {
-                phase: 'Phase 1: GATE PYQ Coverage',
-                focus: 'Cover all listed topics daily. Solve timed PYQs. Build error notebook.',
-                priority: 'Coverage + Accuracy',
-            };
-        } else if (currentDay <= 27) {
-            return {
-                phase: 'Phase 2: BARC PYQ + Repair',
-                focus: 'Solve BARC sets. Identify and fix weak areas immediately. Re-solve wrong questions.',
-                priority: 'Speed + Weak Area Fixing',
-            };
-        } else {
-            return {
-                phase: 'Phase 3: Final Revision',
-                focus: 'Rapid revision of mistakes and formulas. No heavy solving. Sleep well.',
-                priority: 'Confidence + Retention',
+                phase: phase.title,
+                focus: 'Logistics, admit card, calm attempts — no new content.',
+                priority: 'Execution + rest',
             };
         }
+        if (phase.key === 'testseries') {
+            return {
+                phase: phase.title,
+                focus: 'Timed tests in sheet order — strict timer, log scores, same-day solution pass on misses.',
+                priority: 'Test discipline + error taxonomy',
+            };
+        }
+        if (phase.key === 'wave') {
+            return {
+                phase: phase.title,
+                focus: 'Monthly Deepak/Sachin grid: go deep on that window’s subjects + daily PYQ reps.',
+                priority: 'Subject depth + timed MCQs',
+            };
+        }
+        if (phase.key === 'ramp') {
+            return {
+                phase: phase.title,
+                focus: 'Build rhythm: DS, algorithms, C, math touch-up until the structured wave months.',
+                priority: 'Habits + foundations',
+            };
+        }
+        return {
+            phase: phase.title,
+            focus:
+                phase.subtitle +
+                (daysRemaining <= 14
+                    ? ` (~${daysRemaining} planner days to mock capstone).`
+                    : ''),
+            priority: 'Execute calmly',
+        };
     },
 
     // Generate daily tip with task suggestions
@@ -74,12 +95,17 @@ export const aiCoach = {
     },
 
     // Suggest what NOT to study based on time remaining
-    suggestWhatNotToStudy: (currentDay) => {
-        const daysRemaining = 32 - currentDay;
+    suggestWhatNotToStudy: (currentDay, planStartISO) => {
+        const phase = getStudyPlanPhase(currentDay, planStartISO);
+        const daysRemaining = STUDY_PLAN_TOTAL_DAYS - currentDay;
+        const fracLeft = daysRemaining / STUDY_PLAN_TOTAL_DAYS;
 
-        if (daysRemaining > 20) {
+        if (phase.key === 'testseries' || phase.key === 'exam') {
+            return lowValueTopics.late;
+        }
+        if (fracLeft > 0.35) {
             return lowValueTopics.early;
-        } else if (daysRemaining > 10) {
+        } else if (fracLeft > 0.12) {
             return lowValueTopics.mid;
         } else {
             return lowValueTopics.late;
@@ -119,18 +145,28 @@ export const aiCoach = {
         };
     },
 
-    // Strategic advice based on exam proximity
-    getStrategicAdvice: (currentDay) => {
-        const daysRemaining = 32 - currentDay;
+    // Strategic advice based on exam proximity and calendar phase
+    getStrategicAdvice: (currentDay, planStartISO) => {
+        const phase = getStudyPlanPhase(currentDay, planStartISO);
+        const daysRemaining = STUDY_PLAN_TOTAL_DAYS - currentDay;
+        const fracLeft = daysRemaining / STUDY_PLAN_TOTAL_DAYS;
 
-        if (daysRemaining <= 5) {
-            return '🎯 Exam is very close. No new topics. Only revise what you know.';
-        } else if (daysRemaining <= 10) {
-            return '📚 Focus on PYQ patterns and formula revision. Speed practice is important.';
-        } else if (daysRemaining <= 20) {
-            return '💪 Perfect time for intensive practice. Build accuracy and speed together.';
+        if (phase.key === 'exam') {
+            return '🎯 Exam day mindset — checklist, calm attempts, no cramming.';
+        }
+        if (phase.key === 'testseries') {
+            return '📝 Test series phase — honor sheet order; analysis beats volume of new theory.';
+        }
+        if (fracLeft <= 0.03) {
+            return '🎯 Final stretch. No new topics — crisp notes, logistics, sleep.';
+        } else if (fracLeft <= 0.08) {
+            return '📚 Lock in PYQ patterns and formula sheets. Short mock analysis only.';
+        } else if (fracLeft <= 0.2) {
+            return '💪 Intensive integration phase — mixed papers, weak-topic repairs, accuracy first.';
+        } else if (fracLeft <= 0.45) {
+            return '🔧 Deep blocks on the monthly grid — numerical discipline and proof intuition.';
         } else {
-            return '🏗️ Foundation phase. Understand concepts deeply before moving to practice.';
+            return '🏗️ Long-haul foundation — DS/algo/C rigor; never skip structured revision slots.';
         }
     },
 };

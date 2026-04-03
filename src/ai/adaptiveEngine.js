@@ -1,5 +1,7 @@
 // Adaptive Learning Engine - Adjusts study plan based on performance
 
+import { STUDY_PLAN_TOTAL_DAYS } from '../data/studyPlan';
+
 export const adaptiveEngine = {
     // Adjust next day's load based on performance
     adjustNextDayLoad: (currentDay, pyqAttempts, sessions, studyPlan) => {
@@ -88,9 +90,10 @@ export const adaptiveEngine = {
     calculateReadinessScore: (sessions, pyqAttempts, mistakes, currentDay, tasks) => {
         let score = 0;
 
-        // 1. Study hours (max 30 points)
+        // 1. Study hours (max 30 points) — ~4.5 h effective focus/day target over long plan
         const totalHours = sessions.reduce((sum, s) => sum + (s.duration / 60), 0);
-        const expectedHours = currentDay * 10; // Expect ~10 hours/day
+        const dailyTargetHours = 4.5;
+        const expectedHours = Math.max(1, currentDay) * dailyTargetHours;
         const hoursScore = Math.min(30, (totalHours / expectedHours) * 30);
         score += hoursScore;
 
@@ -161,7 +164,7 @@ export const adaptiveEngine = {
 
     // Suggest study intensity for today
     suggestIntensity: (currentDay, sessions) => {
-        const daysRemaining = 32 - currentDay;
+        const daysRemaining = STUDY_PLAN_TOTAL_DAYS - currentDay;
         const recentSessions = sessions.slice(-7); // Last 7 sessions
 
         if (recentSessions.length === 0) {
@@ -178,10 +181,10 @@ export const adaptiveEngine = {
             };
         }
 
-        if (daysRemaining <= 7) {
+        if (daysRemaining <= 21) {
             return {
                 level: 'moderate',
-                message: 'Keep intensity moderate as exam approaches. Focus on revision over new content.',
+                message: 'Exam window approaching — favor revision and mock analysis over brand-new theory.',
             };
         }
 

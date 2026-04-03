@@ -1,4 +1,12 @@
-import { format, formatDistance, differenceInDays, parseISO } from 'date-fns';
+import {
+    format,
+    formatDistance,
+    differenceInDays,
+    differenceInCalendarDays,
+    parseISO,
+    startOfDay,
+} from 'date-fns';
+import { getUpcomingComputedDates } from './gateExamDates';
 
 export const formatDate = (date) => {
     if (typeof date === 'string') {
@@ -27,10 +35,10 @@ export const getDateFromDay = (dayNumber) => {
     return targetDate.toISOString().split('T')[0];
 };
 
+/** Days until GATE CSE (1st Sunday of Feb in current cycle). Uses same formula as the nav countdown (sync). */
 export const getDaysUntilExam = () => {
-    const examDate = parseISO('2026-03-21');
-    const today = new Date();
-    return differenceInDays(examDate, today);
+    const { gateCse } = getUpcomingComputedDates();
+    return differenceInCalendarDays(startOfDay(gateCse), startOfDay(new Date()));
 };
 
 export const getRelativeTime = (date) => {

@@ -146,6 +146,20 @@ export const SUBJECTS = {
             'Code Optimization',
         ],
     },
+    C_PROG: {
+        id: 'c_prog',
+        name: 'C & CS Fundamentals',
+        shortName: 'C / Fund.',
+        color: 'ds',
+        examWeight: 'high',
+        topics: [
+            'Pointers & Memory',
+            'Arrays, Strings, Structures',
+            'Recursion & Time Complexity',
+            'Linked Lists in C',
+            'Stacks & Queues Implementation',
+        ],
+    },
     MATH: {
         id: 'math',
         name: 'Engineering Mathematics',

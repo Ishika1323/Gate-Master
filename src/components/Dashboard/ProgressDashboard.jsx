@@ -84,22 +84,22 @@ export default function ProgressDashboard() {
                                 </p>
                             </div>
 
-                            <div className="flex items-end gap-8">
+                            <div className="flex flex-wrap sm:flex-nowrap items-end gap-4 sm:gap-8">
                                 <div>
-                                    <div className="text-brand-200 text-sm font-medium mb-1 uppercase tracking-wider">Exam Readiness</div>
-                                    <div className="text-5xl font-mono font-bold tracking-tighter">
+                                    <div className="text-brand-200 text-xs sm:text-sm font-medium mb-1 uppercase tracking-wider">Exam Readiness</div>
+                                    <div className="text-4xl sm:text-5xl font-mono font-bold tracking-tighter">
                                         {readinessScore}%
                                     </div>
                                 </div>
 
-                                <div className="h-16 w-px bg-brand-500/50"></div>
+                                <div className="hidden sm:block h-16 w-px bg-brand-500/50"></div>
 
                                 <div>
-                                    <div className="text-brand-200 text-sm font-medium mb-1 uppercase tracking-wider">Day</div>
-                                    <div className="text-3xl font-mono font-bold">
-                                        {currentDay}<span className="text-brand-300 text-lg">/{STUDY_PLAN_TOTAL_DAYS}</span>
+                                    <div className="text-brand-200 text-xs sm:text-sm font-medium mb-1 uppercase tracking-wider">Day</div>
+                                    <div className="text-2xl sm:text-3xl font-mono font-bold">
+                                        {currentDay}<span className="text-brand-300 text-sm sm:text-lg">/{STUDY_PLAN_TOTAL_DAYS}</span>
                                     </div>
-                                    <div className="text-brand-300 text-xs mt-1 font-medium bg-brand-900/40 px-2 py-0.5 rounded-full w-fit">
+                                    <div className="text-brand-300 text-[10px] sm:text-xs mt-1 font-medium bg-brand-900/40 px-2 py-0.5 rounded-full w-fit">
                                         {getEffectiveToday().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
                                     </div>
                                 </div>

@@ -41,8 +41,9 @@ export default function ProgressDashboard() {
     const studyPlan = useMasterStudyPlan();
     const dayPlan = useMemo(() => studyPlan.find(d => d.day === currentDay) || studyPlan[0], [studyPlan, currentDay]);
 
-    const syllabusCount = completedSyllabusTopics.length;
-    const totalSyllabusTopics = getAllSyllabusIds().length;
+    const allIds = useMemo(() => getAllSyllabusIds(), []);
+    const totalSyllabusTopics = allIds.length;
+    const syllabusCount = completedSyllabusTopics.filter(id => allIds.includes(id)).length;
 
 
     useEffect(() => {

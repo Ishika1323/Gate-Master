@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Card from '../UI/Card';
 import { ChevronDown, ChevronUp, CheckCircle, Circle, Brain } from 'lucide-react';
 import { SYLLABUS_DATA } from '../../data/syllabus';
+import useAppStore from '../../store/useAppStore';
 
 /**
  * SubjectProgressGrid

@@ -91,39 +91,60 @@ function App() {
     if (supabase) {
         // 1. Register listener FIRST to catch events during refresh/redirect
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-            useAppStore.getState().setAuth(session);
+            const currentState = useAppStore.getState();
+            const isGuest = currentState.session?.isGuest || currentState.session?.user?.email === 'guest@gatemaster.ai';
+            
+            if (!session && isGuest) {
+                // Keep guest session, ignore null from Supabase
+            } else {
+                useAppStore.getState().setAuth(session);
+            }
             authChecked = true;
             
             const state = useAppStore.getState();
-            const metaStart = session?.user?.user_metadata?.plan_start_date;
+            const metaStart = state.session?.user?.user_metadata?.plan_start_date;
             if (metaStart && !state.planStartDate) {
                 state.setPlanStartDate(metaStart);
-            } else if (state.planStartDate && metaStart !== state.planStartDate) {
+            } else if (state.planStartDate && metaStart !== state.planStartDate && state.session && !state.session.isGuest) {
                 await supabase.auth.updateUser({ data: { plan_start_date: state.planStartDate } });
             }
 
-            if (_event === 'SIGNED_IN' || _event === 'TOKEN_REFRESHED') {
+            if (_event === 'SIGNED_IN' || _event === 'TOKEN_REFRESHED' || isGuest) {
                 void load();
             }
         });
 
         // 2. Fetch session immediately
         supabase.auth.getSession().then(async ({ data: { session } }) => {
-            useAppStore.getState().setAuth(session);
+            const currentState = useAppStore.getState();
+            const isGuest = currentState.session?.isGuest || currentState.session?.user?.email === 'guest@gatemaster.ai';
+
+            if (!session && isGuest) {
+                // Keep guest session, ignore null from Supabase
+                useAppStore.getState().setAuthLoading(false);
+            } else {
+                useAppStore.getState().setAuth(session);
+            }
             authChecked = true;
             
             const state = useAppStore.getState();
-            const metaStart = session?.user?.user_metadata?.plan_start_date;
+            const metaStart = state.session?.user?.user_metadata?.plan_start_date;
             if (metaStart && !state.planStartDate) {
                 state.setPlanStartDate(metaStart);
-            } else if (state.planStartDate && metaStart !== state.planStartDate && session) {
+            } else if (state.planStartDate && metaStart !== state.planStartDate && state.session && !state.session.isGuest) {
                 await supabase.auth.updateUser({ data: { plan_start_date: state.planStartDate } });
             }
             
             // Hydration safety: ensure store is ready before loading DB content
-            useAppStore.persist.onFinishHydration(() => {
+            if (useAppStore.persist?.hasHydrated && useAppStore.persist.hasHydrated()) {
                 void load();
-            });
+            } else if (useAppStore.persist?.onFinishHydration) {
+                useAppStore.persist.onFinishHydration(() => {
+                    void load();
+                });
+            } else {
+                void load();
+            }
         });
 
         return () => {

@@ -37,7 +37,7 @@ export default function LoginPage() {
 
     const handleGuestLogin = () => {
         // Mock session to bypass protection
-        useAppStore.getState().setAuth({ user: { email: 'guest@gatemaster.ai', user_metadata: { full_name: 'Guest Explorer' } } });
+        useAppStore.getState().setAuth({ isGuest: true, user: { email: 'guest@gatemaster.ai', user_metadata: { full_name: 'Guest Explorer' } } });
     };
 
     return (

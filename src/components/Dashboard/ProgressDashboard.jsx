@@ -13,6 +13,7 @@ import { useGateExamDates } from '../../hooks/useGateExamDates';
 import { getDaysLeftLabel } from '../../utils/gateExamDates';
 import { getEffectiveToday } from '../../utils/dayBoundary';
 import { useNavigate } from 'react-router-dom';
+import { getAllSyllabusIds } from '../../data/syllabus';
 
 import TodaySchedulePanel from './TodaySchedulePanel';
 import SubjectProgressGrid from './SubjectProgressGrid';
@@ -41,6 +42,8 @@ export default function ProgressDashboard() {
     const dayPlan = useMemo(() => studyPlan.find(d => d.day === currentDay) || studyPlan[0], [studyPlan, currentDay]);
 
     const syllabusCount = completedSyllabusTopics.length;
+    const totalSyllabusTopics = getAllSyllabusIds().length;
+
 
     useEffect(() => {
         const tip = aiCoach.generateDailyTip(currentDay, tasks, pyqAttempts, sessions);
@@ -157,7 +160,7 @@ export default function ProgressDashboard() {
                         </div>
                         <div className="mt-3">
                             <div className="stat-value text-slate-900 dark:text-white">
-                                {syllabusCount} <span className="text-sm text-slate-400 font-normal">topics</span>
+                                {syllabusCount}<span className="text-sm text-slate-400 font-normal">/{totalSyllabusTopics} topics</span>
                             </div>
                         </div>
                     </div>

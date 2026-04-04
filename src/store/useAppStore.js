@@ -662,10 +662,10 @@ const useAppStore = create(
         {
             name: 'gate-study-planner',
             partialize: (state) => {
-                // Exclude auth-related fields from persistence.
-                // These must be hydrated fresh from Supabase on every page load
-                // to avoid stale session data causing redirect loops.
-                const { session, user, authLoading, ...rest } = state;
+                // We now PERSIST the session/user to ensure Guest Mode survives refreshes
+                // and to avoid layout flicker during slow auth SDK boot.
+                // authLoading is still excluded so it always starts as true.
+                const { authLoading, ...rest } = state;
                 return rest;
             },
         }

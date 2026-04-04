@@ -65,6 +65,8 @@ function App() {
 
   useEffect(() => {
     let dataLoaded = false;
+    let authChecked = false;
+
     const load = async () => {
       if (dataLoaded) return;
       dataLoaded = true;
@@ -75,14 +77,23 @@ function App() {
       syncStudyPlan();
     };
 
+    // SAFETY FALLBACK: If auth initialization hangs for more than 5s,
+    // force-disable the loading screen to prevent a blank page.
+    const lockTimer = setTimeout(() => {
+        if (useAppStore.getState().authLoading) {
+            console.warn("Auth initialization timed out after 5s. Bypassing loading screen.");
+            useAppStore.getState().setAuthLoading(false);
+            void load();
+        }
+    }, 5000);
+
     // Auth Listener
     if (supabase) {
-        // 1. Register the auth state change listener FIRST so we never miss
-        //    the SIGNED_IN event that fires on OAuth redirect callbacks.
+        // 1. Register listener FIRST to catch events during refresh/redirect
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
             useAppStore.getState().setAuth(session);
+            authChecked = true;
             
-            // Sync plan_start_date from metadata or push local state up
             const state = useAppStore.getState();
             const metaStart = session?.user?.user_metadata?.plan_start_date;
             if (metaStart && !state.planStartDate) {
@@ -91,16 +102,15 @@ function App() {
                 await supabase.auth.updateUser({ data: { plan_start_date: state.planStartDate } });
             }
 
-            // Trigger data load on sign-in to handle post-OAuth redirect
             if (_event === 'SIGNED_IN' || _event === 'TOKEN_REFRESHED') {
                 void load();
             }
         });
 
-        // 2. Then check for an existing session. This handles page refreshes
-        //    where the user is already authenticated.
+        // 2. Fetch session immediately
         supabase.auth.getSession().then(async ({ data: { session } }) => {
             useAppStore.getState().setAuth(session);
+            authChecked = true;
             
             const state = useAppStore.getState();
             const metaStart = session?.user?.user_metadata?.plan_start_date;
@@ -110,16 +120,23 @@ function App() {
                 await supabase.auth.updateUser({ data: { plan_start_date: state.planStartDate } });
             }
             
-            // Load data after we know the auth state
-            void load();
+            // Hydration safety: ensure store is ready before loading DB content
+            useAppStore.persist.onFinishHydration(() => {
+                void load();
+            });
         });
 
         return () => {
+            clearTimeout(lockTimer);
             subscription.unsubscribe();
         };
     } else {
+        // No Supabase configured -> treat as local-only / guest immediately
         useAppStore.getState().setAuthLoading(false);
-        void load();
+        useAppStore.persist.onFinishHydration(() => {
+            void load();
+        });
+        clearTimeout(lockTimer);
         return () => {};
     }
   }, [hydrateFromDb, syncStudyPlan, initializeCurrentDay]);

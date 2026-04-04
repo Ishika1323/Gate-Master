@@ -12,6 +12,7 @@ import { SYLLABUS_DATA } from '../../data/syllabus';
  * ID format: `${section.id}-${topic.id}-${subtopicIndex}`
  */
 export default function SubjectProgressGrid({ completedSyllabusTopics = [], completedPyqTopics = [] }) {
+    const { toggleSyllabusTopic } = useAppStore();
     const [expandedIds, setExpandedIds] = useState(new Set());
 
     const toggleExpand = (id) => {
@@ -94,7 +95,7 @@ export default function SubjectProgressGrid({ completedSyllabusTopics = [], comp
                 </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
                 {subjects.map(subj => {
                     const isExpanded = expandedIds.has(subj.id);
                     const circumference = 2 * Math.PI * 20; // r=20
@@ -161,18 +162,27 @@ export default function SubjectProgressGrid({ completedSyllabusTopics = [], comp
                             {/* Expanded topic list with fluid transition */}
                             <div className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${isExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
                                 <div className="overflow-hidden">
-                                    <div className="border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-3 space-y-1 max-h-52 overflow-y-auto">
+                                    <div className="border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-3 space-y-1.5 max-h-60 overflow-y-auto custom-scrollbar">
                                         {subj.topicsWithStatus.map(t => (
-                                            <div key={t.uid} className="flex items-center gap-2 p-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-800">
-                                                {t.conceptsDone
-                                                    ? <CheckCircle size={14} className="text-emerald-500 shrink-0" />
-                                                    : <Circle size={14} className="text-slate-300 dark:text-slate-600 shrink-0" />
-                                                }
-                                                <span className={`text-xs flex-1 truncate ${t.conceptsDone ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-300'}`}>
+                                            <div 
+                                                key={t.uid} 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    toggleSyllabusTopic(t.uid);
+                                                }}
+                                                className="group flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 border border-transparent hover:border-slate-100 dark:hover:border-slate-700 transition-all"
+                                            >
+                                                <div className="shrink-0 transition-transform group-active:scale-90">
+                                                    {t.conceptsDone
+                                                        ? <CheckCircle size={16} className="text-emerald-500" />
+                                                        : <Circle size={16} className="text-slate-300 dark:text-slate-600" />
+                                                    }
+                                                </div>
+                                                <span className={`text-xs flex-1 select-none transition-colors ${t.conceptsDone ? 'text-slate-400 line-through' : 'text-slate-700 dark:text-slate-200 font-medium'}`}>
                                                     {t.label}
                                                 </span>
                                                 {t.pyqsDone && (
-                                                    <span className="text-[9px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-300 px-1 py-0.5 rounded shrink-0">PYQ✓</span>
+                                                    <span className="text-[9px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-300 px-1.5 py-0.5 rounded shadow-sm shrink-0">PYQ✓</span>
                                                 )}
                                             </div>
                                         ))}

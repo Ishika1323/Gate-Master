@@ -127,7 +127,7 @@ export default function SubjectProgressGrid({ completedSyllabusTopics = [], comp
                                         />
                                     </svg>
                                     <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-slate-700 dark:text-slate-200">
-                                        {subj.conceptPct}%
+                                        {subj.conceptPct === 0 ? '0' : `${subj.conceptPct}%`}
                                     </span>
                                 </div>
 
@@ -140,7 +140,7 @@ export default function SubjectProgressGrid({ completedSyllabusTopics = [], comp
                                             {subj.completedConcepts}/{subj.totalSubtopics} topics
                                         </span>
                                         <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${subj.badgeClass}`}>
-                                            PYQ {subj.pyqPct}%
+                                            PYQ {subj.pyqPct === 0 ? '0' : `${subj.pyqPct}%`}
                                         </span>
                                     </div>
                                     {/* PYQ bar */}

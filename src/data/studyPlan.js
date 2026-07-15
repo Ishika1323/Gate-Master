@@ -321,7 +321,10 @@ export function buildStudyPlan(planStartISO) {
 }
 
 export function defaultPlanStart() {
-    return '2026-07-15';
+    // Anchor the plan to "today" (local time) so Day 1 is the day the user
+    // first opens the app, rather than a frozen hardcoded date that rots over time.
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 /** Fallback for code paths that do not yet read planStartDate */

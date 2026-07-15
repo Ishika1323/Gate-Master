@@ -646,6 +646,22 @@ const useAppStore = create(
         }),
         {
             name: 'gate-study-planner',
+            version: 1,
+            migrate: (persistedState) => {
+                // v1: the 311-day plan is now anchored to start "today". Browsers that
+                // used an earlier build carry a stale persisted planStartDate (e.g. the
+                // old hardcoded anchor), which initializeCurrentDay would keep using —
+                // leaving the plan stuck on Day 100+ with a huge phantom backlog.
+                // migrate only runs when the stored version differs from 1 (earlier
+                // builds had no explicit version, so zustand persisted them as 0), so
+                // unconditionally clear the anchor here to re-anchor the plan to the
+                // current day on the next load.
+                if (persistedState) {
+                    persistedState.planStartDate = null;
+                    persistedState.currentDay = 1;
+                }
+                return persistedState;
+            },
             partialize: (state) => {
                 // We now PERSIST the session/user to ensure Guest Mode survives refreshes
                 // and to avoid layout flicker during slow auth SDK boot.

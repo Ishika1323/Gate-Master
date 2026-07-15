@@ -143,7 +143,7 @@ function bridgeRampSessions(day) {
 /**
  * @param {{ catchupQueue: Array, catchIdx: { i: number }, testIdx: { i: number } }} ctx
  */
-function buildTestSeriesMain(ctx, day, date) {
+function buildTestSeriesMain(ctx, day) {
     const { catchupQueue, catchIdx, testIdx } = ctx;
     const mathTopic = getMathAlternatingTopic(day);
 
@@ -301,7 +301,7 @@ export function buildStudyPlan(planStartISO) {
         const cm = calendarMonthOf(date);
 
         if (isTestSeriesPhase(date)) {
-            sessions = buildTestSeriesMain(ctx, day, date);
+            sessions = buildTestSeriesMain(ctx, day);
         } else if (WAVE_MONTHS.includes(cm)) {
             sessions = buildWaveDaySessions(cm, day, start);
         } else {
@@ -321,7 +321,7 @@ export function buildStudyPlan(planStartISO) {
 }
 
 export function defaultPlanStart() {
-    return '2026-04-03';
+    return '2026-07-15';
 }
 
 /** Fallback for code paths that do not yet read planStartDate */

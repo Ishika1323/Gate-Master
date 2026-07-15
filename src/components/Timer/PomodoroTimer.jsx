@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Play, Pause, RotateCcw, Settings, Volume2, VolumeX, Maximize2, Minimize2, CheckCircle2 } from 'lucide-react';
 import useAppStore from '../../store/useAppStore';
 import Card from '../UI/Card';
@@ -6,6 +6,7 @@ import Button from '../UI/Button';
 import Badge from '../UI/Badge';
 import { formatTime, getTimerMode, calculateProgress } from '../../utils/timerUtils';
 import { getSubjectById, SUBJECTS } from '../../data/subjects';
+import CircularProgress from '../shared/CircularProgress';
 
 export default function PomodoroTimer() {
     const { timer, setTimer, resetTimer, addSession } = useAppStore();
@@ -14,32 +15,10 @@ export default function PomodoroTimer() {
     const [soundEnabled, setSoundEnabled] = useState(true);
     const intervalRef = useRef(null);
 
-    useEffect(() => {
-        if (timer.isActive && !timer.isPaused) {
-            intervalRef.current = setInterval(() => {
-                setTimer({ timeRemaining: timer.timeRemaining - 1 });
-
-                if (timer.timeRemaining <= 1) {
-                    handleTimerComplete();
-                }
-            }, 1000);
-        } else {
-            if (intervalRef.current) {
-                clearInterval(intervalRef.current);
-            }
-        }
-
-        return () => {
-            if (intervalRef.current) {
-                clearInterval(intervalRef.current);
-            }
-        };
-    }, [timer.isActive, timer.isPaused, timer.timeRemaining]);
-
-    const handleTimerComplete = () => {
+    const handleTimerComplete = useCallback(() => {
         // Play sound logic would go here
         if (soundEnabled) {
-            // playAudio(); 
+            // playAudio();
         }
 
         if (!timer.isBreak && timer.currentSubject) {
@@ -64,7 +43,29 @@ export default function PomodoroTimer() {
                 isActive: false,
             });
         }
-    };
+    }, [soundEnabled, timer.isBreak, timer.currentSubject, timer.currentTopic, timer.workDuration, timer.breakDuration, addSession, setTimer]);
+
+    useEffect(() => {
+        if (timer.isActive && !timer.isPaused) {
+            intervalRef.current = setInterval(() => {
+                setTimer({ timeRemaining: timer.timeRemaining - 1 });
+
+                if (timer.timeRemaining <= 1) {
+                    handleTimerComplete();
+                }
+            }, 1000);
+        } else {
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+            }
+        }
+
+        return () => {
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+            }
+        };
+    }, [timer.isActive, timer.isPaused, timer.timeRemaining, handleTimerComplete, setTimer]);
 
     const handlePlayPause = () => {
         if (!timer.isActive) {
@@ -162,35 +163,18 @@ export default function PomodoroTimer() {
                     </div>
 
                     {/* Timer Display */}
-                    <div className="relative mb-12">
-                        <svg className="w-80 h-80 mx-auto transform -rotate-90">
-                            {/* Background Circle */}
-                            <circle
-                                cx="160"
-                                cy="160"
-                                r="148"
-                                stroke="currentColor"
-                                strokeWidth="12"
-                                fill="none"
-                                className="text-slate-100 dark:text-slate-800"
-                            />
-                            {/* Progress Circle */}
-                            <circle
-                                cx="160"
-                                cy="160"
-                                r="148"
-                                stroke="currentColor"
-                                strokeWidth="12"
-                                fill="none"
-                                strokeDasharray={`${2 * Math.PI * 148}`}
-                                strokeDashoffset={`${2 * Math.PI * 148 * (1 - progress / 100)}`}
-                                className={`transition-all duration-1000 ease-linear ${timer.isBreak
-                                    ? 'text-emerald-500 drop-shadow-[0_0_10px_rgba(16,185,129,0.4)]'
-                                    : 'text-brand-600 drop-shadow-[0_0_15px_rgba(37,99,235,0.4)]'
-                                    }`}
-                                strokeLinecap="round"
-                            />
-                        </svg>
+                    <div className="relative mb-12 mx-auto" style={{ width: 320, height: 320 }}>
+                        <CircularProgress
+                            value={progress}
+                            size={320}
+                            strokeWidth={12}
+                            showLabel={false}
+                            trackClassName="text-slate-100 dark:text-slate-800"
+                            progressClassName={`transition-all duration-1000 ease-linear ${timer.isBreak
+                                ? 'text-emerald-500 drop-shadow-[0_0_10px_rgba(16,185,129,0.4)]'
+                                : 'text-brand-600 drop-shadow-[0_0_15px_rgba(37,99,235,0.4)]'
+                                }`}
+                        />
 
                         <div className="absolute inset-0 flex flex-col items-center justify-center">
                             <div className={`font-mono font-bold tracking-tight ${isFullscreen ? 'text-9xl' : 'text-7xl'} ${timer.isBreak ? 'text-emerald-500' : 'text-slate-900 dark:text-white'
@@ -205,7 +189,7 @@ export default function PomodoroTimer() {
 
                             {timer.currentSubject && !timer.isBreak && (
                                 <Badge variant="neutral" size="lg" className="mt-4 px-4 py-2 bg-slate-100 dark:bg-slate-800">
-                                    {getSubjectById(timer.currentSubject)?.name}
+                                    {currentSubjectData?.name}
                                 </Badge>
                             )}
                         </div>

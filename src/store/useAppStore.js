@@ -2,6 +2,9 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { buildStudyPlan, defaultPlanStart, STUDY_PLAN_TOTAL_DAYS } from '../data/studyPlan';
 import { getEffectiveToday } from '../utils/dayBoundary';
+import { supabase } from '../lib/supabase';
+import useScheduleStore from './useScheduleStore';
+import { scheduleOptimizer } from '../services/scheduleOptimizer';
 
 const useAppStore = create(
     persist(
@@ -20,14 +23,12 @@ const useAppStore = create(
             setAuth: (session) => set({ session, user: session?.user || null, authLoading: false }),
             setAuthLoading: (loading) => set({ authLoading: loading }),
             signOut: async () => {
-                const { supabase } = await import('../lib/supabase');
                 if (supabase) {
                     await supabase.auth.signOut();
                     set({ session: null, user: null, authLoading: false });
                 }
             },
             signInWithGoogle: async () => {
-                const { supabase } = await import('../lib/supabase');
                 if (supabase) {
                     const { error } = await supabase.auth.signInWithOAuth({
                         provider: 'google',
@@ -61,28 +62,24 @@ const useAppStore = create(
                     activeStart = envStart;
                     set({ planStartDate: activeStart });
                     // Anchor it publicly to Supabase
-                    import('../lib/supabase').then(({ supabase }) => {
-                        if (supabase && state.session?.user) {
-                            supabase.auth.updateUser({
-                                data: { plan_start_date: activeStart }
-                            });
-                        }
-                    });
-                } 
+                    if (supabase && state.session?.user) {
+                        supabase.auth.updateUser({
+                            data: { plan_start_date: activeStart }
+                        });
+                    }
+                }
                 // 2. Pure Fallback
                 else if (!activeStart) {
-                    activeStart = today.getFullYear() + '-' + 
-                                     String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+                    activeStart = today.getFullYear() + '-' +
+                                     String(today.getMonth() + 1).padStart(2, '0') + '-' +
                                      String(today.getDate()).padStart(2, '0');
                     set({ planStartDate: activeStart });
-                    
-                    import('../lib/supabase').then(({ supabase }) => {
-                        if (supabase && state.session?.user) {
-                            supabase.auth.updateUser({
-                                data: { plan_start_date: activeStart }
-                            });
-                        }
-                    });
+
+                    if (supabase && state.session?.user) {
+                        supabase.auth.updateUser({
+                            data: { plan_start_date: activeStart }
+                        });
+                    }
                 }
                 
                 // Calculate days since plan start natively in Local Time to prevent UTC bugs
@@ -194,28 +191,21 @@ const useAppStore = create(
                 };
                 set({ pyqAttempts: [...get().pyqAttempts, newAttempt] });
                 import('../services/db').then(({ db }) => db.addPyqAttempt(newAttempt));
-            },
-            
-            handlePYQSync: (topicId, subjectId, total, correct) => {
-                // Pass directly to the new pyq store
-                import('./usePyqStore').then(({ default: usePyqStore }) => {
-                    usePyqStore.getState().updatePyqAttempt(topicId, subjectId, total, correct);
-                });
-                
-                // Keep the old tracking logic intact as requested
-                const accuracy = total > 0 ? (correct / total) * 100 : 0;
-                get().togglePyqTopic(topicId); // Simplified marker for demonstration
-                
-                if (accuracy < 60) {
-                    get().setDailyTip(`Gemini Optimization Note: Alert! Detected <60% accuracy on ${topicId}. Weak area flagged. Adjusting upcoming revision schedule to prioritize ${subjectId}.`);
-                } else {
-                    get().setDailyTip(`Gemini Optimization Note: Great accuracy on ${topicId}! Schedule alignment optimized.`);
+
+                // Surface accuracy feedback and keep subject-level stats current
+                const { total, correct, subject } = newAttempt;
+                if (total > 0 && subject) {
+                    const accuracy = (correct / total) * 100;
+                    get().setDailyTip(
+                        accuracy < 60
+                            ? `Alert: <60% accuracy on this ${subject} PYQ set. Weak area flagged for revision.`
+                            : `Nice work — ${Math.round(accuracy)}% accuracy on ${subject}. Keep it up.`
+                    );
+                    get().updateSubjectStats(subject, {
+                        lastPyqAccuracy: accuracy,
+                        needsOptimization: accuracy < 60
+                    });
                 }
-                
-                get().updateSubjectStats(subjectId, {
-                    lastPyqAccuracy: accuracy,
-                    needsOptimization: accuracy < 60
-                });
             },
 
             // Mistake Notebook
@@ -293,68 +283,63 @@ const useAppStore = create(
                 get().toggleSessionComplete(day, sessionId);
 
                 // Also update the active Gemini schedule if it exists
-                import('./useScheduleStore').then(({ default: useScheduleStore }) => {
-                    useScheduleStore.getState().markSessionComplete(sessionId);
-                });
+                useScheduleStore.getState().markSessionComplete(sessionId);
 
                 const currentProgress = get().planProgress;
                 const dayProg = currentProgress.find(p => p.day === day);
                 const sessionProg = dayProg?.sessions?.find(s => s.id === sessionId);
-                
+
                 // If it un-toggled (completed -> false), we can decide if we un-toggle topics.
                 // Keeping it strictly to adding for simplicity as per requirement.
                 if (!sessionProg?.completed) return;
 
                 // 2. Mark topic.completed
-                import('../data/studyPlan').then(({ buildStudyPlan, defaultPlanStart }) => {
-                    const plan = buildStudyPlan(get().planStartDate || defaultPlanStart());
-                    const aiOverrides = get().aiOverrides || {};
-                    let session = plan.find(d => d.day === day)?.sessions?.find(s => s.id === sessionId);
-                    
-                    // Fallback to check AI Overrides if session isn't in baseline
-                    if (!session && aiOverrides[day]) {
-                        const aiSess = aiOverrides[day].sessions.find(s => s.id === sessionId || s.topicId === sessionId);
-                        if (aiSess) {
-                            session = {
-                                topics: [aiSess.topicId || aiSess.topicName], // use explicit topic ID when available
-                                type: aiSess.type || 'study'
-                            };
-                            if (aiSess.pyqsToSolve > 0) session.type = 'pyq';
-                        }
+                const plan = buildStudyPlan(get().planStartDate || defaultPlanStart());
+                const aiOverrides = get().aiOverrides || {};
+                let session = plan.find(d => d.day === day)?.sessions?.find(s => s.id === sessionId);
+
+                // Fallback to check AI Overrides if session isn't in baseline
+                if (!session && aiOverrides[day]) {
+                    const aiSess = aiOverrides[day].sessions.find(s => s.id === sessionId || s.topicId === sessionId);
+                    if (aiSess) {
+                        session = {
+                            topics: [aiSess.topicId || aiSess.topicName], // use explicit topic ID when available
+                            type: aiSess.type || 'study'
+                        };
+                        if (aiSess.pyqsToSolve > 0) session.type = 'pyq';
                     }
-                    
-                    if (session && session.topics) {
-                        const currentTopics = get().completedSyllabusTopics;
-                        // Let's add all topics to completed (which inherently updates subject completedTopics count)
-                        const promises = session.topics.map(topic => {
-                            if (!currentTopics.includes(topic)) {
-                                get().toggleSyllabusTopic(topic);
+                }
+
+                if (session && session.topics) {
+                    const currentTopics = get().completedSyllabusTopics;
+                    // Let's add all topics to completed (which inherently updates subject completedTopics count)
+                    session.topics.forEach(topic => {
+                        if (!currentTopics.includes(topic)) {
+                            get().toggleSyllabusTopic(topic);
+                        }
+                    });
+
+                    // 5. Update PYQ status if it was a PYQ session
+                    if (session.type === 'pyq') {
+                        const currentPyqs = get().completedPyqTopics || [];
+                        session.topics.forEach(topic => {
+                            if (!currentPyqs.includes(topic)) {
+                                get().togglePyqTopic(topic);
                             }
                         });
-                        
-                        // 5. Update PYQ status if it was a PYQ session
-                        if (session.type === 'pyq') {
-                            const currentPyqs = get().completedPyqTopics || [];
-                            session.topics.forEach(topic => {
-                                if (!currentPyqs.includes(topic)) {
-                                    get().togglePyqTopic(topic);
-                                }
-                            });
-                        }
                     }
+                }
 
-                    // 8. If today's schedule is now 100% complete -> auto-call Gemini
-                    const totalSessionsDay = dayPlan?.sessions?.length || 0;
-                    const completedSessionsDay = dayProg?.sessions?.filter(s => s.completed).length || 0;
-                    
-                    if (totalSessionsDay > 0 && completedSessionsDay === totalSessionsDay) {
-                        get().setDailyTip("Gemini Optimization Note: Incredible work clearing all sessions today! Schedule realigned. I've primed your weak areas for tomorrow. Take a rest.");
-                        // Trigger actual Gemini call for tomorrow
-                        import('../services/scheduleOptimizer').then(({ scheduleOptimizer }) => {
-                            scheduleOptimizer.reoptimizeDailySchedule();
-                        });
-                    }
-                });
+                // 8. If today's schedule is now 100% complete -> auto-call Gemini
+                const dayPlan = plan.find(d => d.day === day);
+                const totalSessionsDay = dayPlan?.sessions?.length || 0;
+                const completedSessionsDay = dayProg?.sessions?.filter(s => s.completed).length || 0;
+
+                if (totalSessionsDay > 0 && completedSessionsDay === totalSessionsDay) {
+                    get().setDailyTip("Gemini Optimization Note: Incredible work clearing all sessions today! Schedule realigned. I've primed your weak areas for tomorrow. Take a rest.");
+                    // Trigger actual Gemini call for tomorrow
+                    scheduleOptimizer.reoptimizeDailySchedule();
+                }
             },
 
             // Syncs the persisted progress with the latest plan structure for planStartDate
@@ -544,7 +529,7 @@ const useAppStore = create(
                 // Mark the PYQ penalty tip
                 const subjectName = sessionData?.subject || 'the subject';
                 get().setDailyTip(
-                    `⚠️ Session skipped (${reason}). You must now solve 25 PYQs on your weakest topic to compensate. The skipped content has been rescheduled to Day ${rescheduleDay}.`
+                    `⚠️ Session skipped (${reason}). You must now solve 25 PYQs on your weakest topic in ${subjectName} to compensate. The skipped content has been rescheduled to Day ${rescheduleDay}.`
                 );
 
                 return entry;

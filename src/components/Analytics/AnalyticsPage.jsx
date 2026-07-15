@@ -4,6 +4,20 @@ import Card from '../UI/Card';
 import { SUBJECTS } from '../../data/subjects';
 import { TrendingUp, Clock, Target, Award } from 'lucide-react';
 
+function CustomTooltip({ active, payload, label }) {
+    if (active && payload && payload.length) {
+        return (
+            <div className="bg-white dark:bg-slate-800 p-3 border border-slate-200 dark:border-slate-700 shadow-lg rounded-lg text-sm">
+                <p className="font-semibold mb-1">{label}</p>
+                <p className="text-brand-600 dark:text-brand-400">
+                    {payload[0].value} {payload[0].dataKey === 'accuracy' ? '%' : 'hours'}
+                </p>
+            </div>
+        );
+    }
+    return null;
+}
+
 export default function AnalyticsPage() {
     const { sessions, pyqAttempts, getSubjectFocusHours, getSubjectAccuracy } = useAppStore();
 
@@ -17,7 +31,7 @@ export default function AnalyticsPage() {
     // PYQ accuracy trend
     const accuracyTrend = pyqAttempts.map((attempt, idx) => ({
         attempt: idx + 1,
-        accuracy: attempt.accuracy,
+        accuracy: attempt.total > 0 ? Math.round((attempt.correct / attempt.total) * 100) : 0,
         subject: attempt.subject,
     }));
 
@@ -32,23 +46,11 @@ export default function AnalyticsPage() {
         .sort((a, b) => b.accuracy - a.accuracy);
 
     const totalHours = sessions.reduce((sum, s) => sum + s.duration / 60, 0);
-    const avgAccuracy = pyqAttempts.length > 0
-        ? (pyqAttempts.reduce((sum, a) => sum + a.accuracy, 0) / pyqAttempts.length).toFixed(1)
+    const totalPyqQuestions = pyqAttempts.reduce((sum, a) => sum + (a.total || 0), 0);
+    const totalPyqCorrect = pyqAttempts.reduce((sum, a) => sum + (a.correct || 0), 0);
+    const avgAccuracy = totalPyqQuestions > 0
+        ? ((totalPyqCorrect / totalPyqQuestions) * 100).toFixed(1)
         : 0;
-
-    const CustomTooltip = ({ active, payload, label }) => {
-        if (active && payload && payload.length) {
-            return (
-                <div className="bg-white dark:bg-slate-800 p-3 border border-slate-200 dark:border-slate-700 shadow-lg rounded-lg text-sm">
-                    <p className="font-semibold mb-1">{label}</p>
-                    <p className="text-brand-600 dark:text-brand-400">
-                        {payload[0].value} {payload[0].dataKey === 'accuracy' ? '%' : 'hours'}
-                    </p>
-                </div>
-            );
-        }
-        return null;
-    };
 
     return (
         <div className="space-y-6 animate-fade-in">

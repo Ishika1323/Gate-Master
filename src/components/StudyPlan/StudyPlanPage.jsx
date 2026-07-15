@@ -71,7 +71,10 @@ export default function StudyPlanPage() {
             });
             if (idx !== -1) setMonthIdx(idx);
         }
-    }, [months]); // Run when months are ready
+        // Intentionally runs only when `months` is (re)built, anchored to the initial
+        // dayPlan — re-running on every dayPlan change would fight manual month navigation.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [months]);
 
     const currentMonth = months[monthIdx] || (months.length > 0 ? months[0] : { name: 'Plan', days: [] });
 
@@ -127,8 +130,6 @@ export default function StudyPlanPage() {
         return { totalSessions, completedSessions, pendingSessions, completionPercent };
     };
 
-    if (!dayPlan) return null;
-
     const {
         mergedRows,
         assignedCarryCount,
@@ -147,6 +148,8 @@ export default function StudyPlanPage() {
     }, [currentDay, planProgress, studyPlan, backlogTotal]);
 
     const [showBacklogDetails, setShowBacklogDetails] = useState(false);
+
+    if (!dayPlan) return null;
 
     return (
         <div className="space-y-6 animate-fade-in">

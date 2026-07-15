@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { BookOpen, AlertCircle, CheckCircle2, XCircle, RotateCcw } from 'lucide-react';
 import useAppStore from '../../store/useAppStore';
+import usePyqStore from '../../store/usePyqStore';
 import Card from '../UI/Card';
 import Button from '../UI/Button';
 import Badge from '../UI/Badge';
@@ -8,7 +9,8 @@ import { SUBJECTS } from '../../data/subjects';
 import { adaptiveEngine } from '../../ai/adaptiveEngine';
 
 export default function PYQPage() {
-    const { addPYQAttempt, pyqAttempts, tasks, sessions, mistakes, currentDay } = useAppStore();
+    const { addPyqAttempt, pyqAttempts } = useAppStore();
+    const updatePyqAttempt = usePyqStore(state => state.updatePyqAttempt);
 
     // Form State
     const [subject, setSubject] = useState('');
@@ -23,15 +25,23 @@ export default function PYQPage() {
 
         if (!subject || !correct || !total) return;
 
-        addPYQAttempt({
+        const correctNum = parseInt(correct);
+        const totalNum = parseInt(total);
+
+        addPyqAttempt({
             date: new Date().toISOString(),
             subject,
             year: parseInt(year) || 2023,
             topic,
-            correct: parseInt(correct),
-            total: parseInt(total),
+            correct: correctNum,
+            total: totalNum,
             notes
         });
+
+        // Track per-topic accuracy so weak-area detection has real data to work with
+        if (topic.trim()) {
+            updatePyqAttempt(`${subject}::${topic.trim()}`, subject, totalNum, correctNum);
+        }
 
         // Reset form
         setTopic('');
@@ -41,9 +51,12 @@ export default function PYQPage() {
     };
 
     // Derived State
-    const accuracy = adaptiveEngine.calculateAccuracy(pyqAttempts, subject);
-    const weakAreas = adaptiveEngine.identifyWeakAreas(pyqAttempts, {});
+    const weakAreas = adaptiveEngine.identifyWeakAreas(pyqAttempts);
     const recentAttempts = [...pyqAttempts].reverse().slice(0, 5);
+    const selectedSubjectAccuracy = subject
+        ? adaptiveEngine.calculateAccuracy(pyqAttempts, subject)
+        : null;
+    const hasSelectedSubjectAttempts = subject && pyqAttempts.some(a => a.subject === subject);
 
     const inputClasses = "w-full px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all placeholder:text-slate-400";
     const labelClasses = "block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5";
@@ -79,6 +92,11 @@ export default function PYQPage() {
                                         <option key={s.id} value={s.id}>{s.name}</option>
                                     ))}
                                 </select>
+                                {hasSelectedSubjectAttempts && (
+                                    <p className="text-xs text-slate-500 mt-1.5">
+                                        Your accuracy so far: <span className="font-semibold text-slate-700 dark:text-slate-300">{Math.round(selectedSubjectAccuracy)}%</span>
+                                    </p>
+                                )}
                             </div>
 
                             <div>

@@ -8,7 +8,6 @@ const getGeminiKey = () => import.meta.env.VITE_GEMINI_API_KEY;
 
 export async function generateDailySchedule({
   allSubjects,
-  allTopics,
   completedTopics,
   targetDate,
   availableHours,

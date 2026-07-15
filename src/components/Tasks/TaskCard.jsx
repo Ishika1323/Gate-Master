@@ -7,7 +7,7 @@ import Badge from '../UI/Badge';
 import Button from '../UI/Button';
 
 export default function TaskCard({ task, aiReason, highlighted = false }) {
-    const { toggleTask, deleteTask, updateTask } = useAppStore();
+    const { toggleTask, deleteTask } = useAppStore();
     const subject = getSubjectById(task.subject);
 
     const priorityConfig = {

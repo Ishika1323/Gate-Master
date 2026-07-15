@@ -7,7 +7,7 @@ import Badge from '../UI/Badge';
 import { aiCoach } from '../../ai/aiCoach';
 import { adaptiveEngine } from '../../ai/adaptiveEngine';
 import { taskSuggester } from '../../ai/taskSuggester';
-import { buildStudyPlan, defaultPlanStart, STUDY_PLAN_TOTAL_DAYS } from '../../data/studyPlan';
+import { STUDY_PLAN_TOTAL_DAYS } from '../../data/studyPlan';
 import { useMasterStudyPlan } from '../../hooks/useMasterStudyPlan';
 import { useGateExamDates } from '../../hooks/useGateExamDates';
 import { getDaysLeftLabel } from '../../utils/gateExamDates';
@@ -47,9 +47,9 @@ export default function ProgressDashboard() {
 
 
     useEffect(() => {
-        const tip = aiCoach.generateDailyTip(currentDay, tasks, pyqAttempts, sessions);
+        const tip = aiCoach.generateDailyTip(currentDay, tasks, pyqAttempts);
         setDailyTip(tip);
-    }, [currentDay, planStartDate, tasks.length, pyqAttempts.length, setDailyTip]);
+    }, [currentDay, planStartDate, tasks, pyqAttempts, setDailyTip]);
 
     const cseCountdown = getDaysLeftLabel(gateCse);
     const daysUntilExamDisplay = cseCountdown.days < 0 ? '—' : cseCountdown.days;

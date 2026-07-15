@@ -1,19 +1,29 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, Suspense, lazy } from 'react';
 import Navbar from './components/Layout/Navbar';
 import ProgressDashboard from './components/Dashboard/ProgressDashboard';
-import PomodoroTimer from './components/Timer/PomodoroTimer';
-import TasksPage from './components/Tasks/TasksPage';
-import AnalyticsPage from './components/Analytics/AnalyticsPage';
-import StudyPlanPage from './components/StudyPlan/StudyPlanPage';
-import PYQPage from './components/PYQ/PYQPage';
-import SyllabusPage from './components/Syllabus/SyllabusPage';
-import TopicStrengthBoard from './components/TopicBoard/TopicStrengthBoard';
 import LoginPage from './components/Auth/LoginPage';
 import LogoutPage from './components/Auth/LogoutPage';
 import { supabase } from './lib/supabase';
 import useAppStore from './store/useAppStore';
 import './styles/index.css';
+
+// Route-level code splitting: keep only the dashboard (landing route) eager.
+const PomodoroTimer = lazy(() => import('./components/Timer/PomodoroTimer'));
+const TasksPage = lazy(() => import('./components/Tasks/TasksPage'));
+const AnalyticsPage = lazy(() => import('./components/Analytics/AnalyticsPage'));
+const StudyPlanPage = lazy(() => import('./components/StudyPlan/StudyPlanPage'));
+const PYQPage = lazy(() => import('./components/PYQ/PYQPage'));
+const SyllabusPage = lazy(() => import('./components/Syllabus/SyllabusPage'));
+const TopicStrengthBoard = lazy(() => import('./components/TopicBoard/TopicStrengthBoard'));
+
+function RouteFallback() {
+  return (
+    <div className="flex items-center justify-center py-24 text-slate-400 animate-pulse">
+      Loading...
+    </div>
+  );
+}
 
 /**
  * ProtectedRoute Wrapper
@@ -65,7 +75,6 @@ function App() {
 
   useEffect(() => {
     let dataLoaded = false;
-    let authChecked = false;
 
     const load = async () => {
       if (dataLoaded) return;
@@ -99,8 +108,6 @@ function App() {
             } else {
                 useAppStore.getState().setAuth(session);
             }
-            authChecked = true;
-            
             const state = useAppStore.getState();
             const metaStart = state.session?.user?.user_metadata?.plan_start_date;
             if (metaStart && !state.planStartDate) {
@@ -125,8 +132,6 @@ function App() {
             } else {
                 useAppStore.getState().setAuth(session);
             }
-            authChecked = true;
-            
             const state = useAppStore.getState();
             const metaStart = state.session?.user?.user_metadata?.plan_start_date;
             if (metaStart && !state.planStartDate) {
@@ -162,8 +167,6 @@ function App() {
     }
   }, [hydrateFromDb, syncStudyPlan, initializeCurrentDay]);
 
-  const { session } = useAppStore();
-
   return (
     <Router>
       <Routes>
@@ -178,17 +181,19 @@ function App() {
               <Navbar />
               <div className="flex-1 w-full min-w-0 md:pl-64 transition-all duration-200">
                 <main className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto mt-[7.5rem] md:mt-0">
-                  <Routes>
-                    <Route path="/" element={<ProgressDashboard />} />
-                    <Route path="/timer" element={<PomodoroTimer />} />
-                    <Route path="/tasks" element={<TasksPage />} />
-                    <Route path="/analysis" element={<AnalyticsPage />} />
-                    <Route path="/plan" element={<StudyPlanPage />} />
-                    <Route path="/pyq" element={<PYQPage />} />
-                    <Route path="/syllabus" element={<SyllabusPage />} />
-                    <Route path="/topics" element={<TopicStrengthBoard />} />
-                    <Route path="*" element={<Navigate to="/" replace />} />
-                  </Routes>
+                  <Suspense fallback={<RouteFallback />}>
+                    <Routes>
+                      <Route path="/" element={<ProgressDashboard />} />
+                      <Route path="/timer" element={<PomodoroTimer />} />
+                      <Route path="/tasks" element={<TasksPage />} />
+                      <Route path="/analysis" element={<AnalyticsPage />} />
+                      <Route path="/plan" element={<StudyPlanPage />} />
+                      <Route path="/pyq" element={<PYQPage />} />
+                      <Route path="/syllabus" element={<SyllabusPage />} />
+                      <Route path="/topics" element={<TopicStrengthBoard />} />
+                      <Route path="*" element={<Navigate to="/" replace />} />
+                    </Routes>
+                  </Suspense>
                 </main>
               </div>
             </div>

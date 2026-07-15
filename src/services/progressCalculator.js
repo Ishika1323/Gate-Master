@@ -1,4 +1,4 @@
-import { buildStudyPlan, defaultPlanStart, STUDY_PLAN_TOTAL_DAYS } from '../data/studyPlan';
+import { defaultPlanStart, STUDY_PLAN_TOTAL_DAYS } from '../data/studyPlan';
 import { GATE_CS_SUBJECTS } from '../data/gateSubjects';
 import useAppStore from '../store/useAppStore';
 
@@ -85,6 +85,5 @@ export const progressCalculator = {
 
 function getPlanStart() {
     const storeStart = useAppStore.getState().planStartDate;
-    if (storeStart) return new Date(storeStart);
-    return new Date('2026-04-03'); // Enforce April 3rd start default
+    return new Date(storeStart || defaultPlanStart());
 }

@@ -1,5 +1,4 @@
 import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import useAppStore from '../../store/useAppStore';
 import Card from '../UI/Card';
 import Button from '../UI/Button';
@@ -7,7 +6,6 @@ import { LogOut, CheckCircle2, ArrowRight, Brain } from 'lucide-react';
 
 export default function LogoutPage() {
     const { signOut } = useAppStore();
-    const navigate = useNavigate();
 
     useEffect(() => {
         // Trigger signout on mount

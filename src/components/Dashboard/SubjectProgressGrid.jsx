@@ -3,6 +3,7 @@ import Card from '../UI/Card';
 import { ChevronDown, ChevronUp, CheckCircle, Circle, Brain } from 'lucide-react';
 import { SYLLABUS_DATA } from '../../data/syllabus';
 import useAppStore from '../../store/useAppStore';
+import CircularProgress from '../shared/CircularProgress';
 
 /**
  * SubjectProgressGrid
@@ -99,7 +100,6 @@ export default function SubjectProgressGrid({ completedSyllabusTopics = [], comp
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
                 {subjects.map(subj => {
                     const isExpanded = expandedIds.has(subj.id);
-                    const circumference = 2 * Math.PI * 20; // r=20
 
                     return (
                         <div
@@ -112,23 +112,16 @@ export default function SubjectProgressGrid({ completedSyllabusTopics = [], comp
                                 onClick={() => toggleExpand(subj.id)}
                             >
                                 {/* SVG Circular Progress */}
-                                <div className="shrink-0 relative w-12 h-12">
-                                    <svg width="48" height="48" viewBox="0 0 48 48">
-                                        <circle cx="24" cy="24" r="20" fill="none" stroke="rgba(148,163,184,0.2)" strokeWidth="5" />
-                                        <circle
-                                            cx="24" cy="24" r="20"
-                                            fill="none"
-                                            stroke={subj.ringColor}
-                                            strokeWidth="5"
-                                            strokeLinecap="round"
-                                            strokeDasharray={circumference}
-                                            strokeDashoffset={circumference - (subj.conceptPct / 100) * circumference}
-                                            transform="rotate(-90 24 24)"
-                                        />
-                                    </svg>
-                                    <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-slate-700 dark:text-slate-200">
-                                        {subj.conceptPct === 0 ? '0' : `${subj.conceptPct}%`}
-                                    </span>
+                                <div className="shrink-0">
+                                    <CircularProgress
+                                        value={subj.conceptPct}
+                                        size={48}
+                                        strokeWidth={5}
+                                        color={subj.ringColor}
+                                        background="rgba(148,163,184,0.2)"
+                                        labelFormatter={(v) => (v === 0 ? '0' : `${Math.round(v)}%`)}
+                                        labelClassName="text-[10px] text-slate-700 dark:text-slate-200"
+                                    />
                                 </div>
 
                                 <div className="flex-1 min-w-0">

@@ -12,12 +12,6 @@ const motivationalMessages = [
     "Your future self will thank you for the effort you're putting in today.",
 ];
 
-const lowValueTopics = {
-    early: ['Compiler Design - Advanced topics', 'TOC - Advanced Automata'],
-    mid: ['Deep COA internals', 'Advanced Compiler Optimization'],
-    late: ['New topics', 'Low-weight subjects', 'Deep theoretical concepts'],
-};
-
 export const aiCoach = {
     // Generate daily recommendation based on day and performance (planStartISO = YYYY-MM-DD from store)
     getDailyRecommendation: (currentDay, subjectStats, tasks, planStartISO) => {
@@ -64,7 +58,7 @@ export const aiCoach = {
     },
 
     // Generate daily tip with task suggestions
-    generateDailyTip: (currentDay, tasks, pyqAttempts, sessions) => {
+    generateDailyTip: (currentDay, tasks, pyqAttempts) => {
         const incompleteTasks = tasks.filter(t => !t.completed);
         const highPriorityTasks = incompleteTasks.filter(t => t.priority === 'high');
         const reattemptTasks = incompleteTasks.filter(t => t.reattemptRequired);
@@ -92,57 +86,6 @@ export const aiCoach = {
         }
 
         return tip;
-    },
-
-    // Suggest what NOT to study based on time remaining
-    suggestWhatNotToStudy: (currentDay, planStartISO) => {
-        const phase = getStudyPlanPhase(currentDay, planStartISO);
-        const daysRemaining = STUDY_PLAN_TOTAL_DAYS - currentDay;
-        const fracLeft = daysRemaining / STUDY_PLAN_TOTAL_DAYS;
-
-        if (phase.key === 'testseries' || phase.key === 'exam') {
-            return lowValueTopics.late;
-        }
-        if (fracLeft > 0.35) {
-            return lowValueTopics.early;
-        } else if (fracLeft > 0.12) {
-            return lowValueTopics.mid;
-        } else {
-            return lowValueTopics.late;
-        }
-    },
-
-    // Detect burnout based on session patterns
-    detectBurnout: (sessions) => {
-        const recentSessions = sessions.slice(-10);
-        if (recentSessions.length < 5) return null;
-
-        // Check for consecutive long sessions
-        const longSessions = recentSessions.filter(s => s.duration > 120);
-        if (longSessions.length === recentSessions.length) {
-            return {
-                detected: true,
-                message: '⚠️ You\'ve been pushing hard! Consider taking shorter sessions or a longer break to avoid burnout.',
-                suggestion: 'Try 25/5 Pomodoro instead of longer sessions for the next few hours.',
-            };
-        }
-
-        // Check for irregular patterns (sessions at odd times)
-        // This is simplified - in a real scenario, we'd check timestamps
-        return null;
-    },
-
-    // Generate mini quiz for quick revision
-    generateMiniQuiz: (subject) => {
-        // This is a placeholder - in a full implementation, 
-        // you'd have a question bank
-        return {
-            subject,
-            questions: [
-                'Quick quiz generated for ' + subject,
-                'Review your notes and test yourself on key concepts',
-            ],
-        };
     },
 
     // Strategic advice based on exam proximity and calendar phase

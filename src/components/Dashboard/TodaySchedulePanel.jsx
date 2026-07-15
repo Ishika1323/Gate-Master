@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import Card from '../UI/Card';
 import Modal from '../UI/Modal';
 import Button from '../UI/Button';
-import { Clock, CheckCircle2, Circle, Brain, BookOpen, Sparkles, XCircle, AlertTriangle, Target } from 'lucide-react';
+import { Clock, CheckCircle2, Circle, Brain, BookOpen, Sparkles, XCircle, AlertTriangle, Target, RefreshCw } from 'lucide-react';
 import useAppStore from '../../store/useAppStore';
+import useScheduleStore from '../../store/useScheduleStore';
+import { scheduleOptimizer } from '../../services/scheduleOptimizer';
 import { buildMergedScheduleRows } from '../../utils/adaptiveSchedule';
 import { getSubjectById } from '../../data/subjects';
 import Badge from '../UI/Badge';
@@ -21,7 +23,7 @@ import { getEffectiveToday } from '../../utils/dayBoundary';
  *  - After submitting, prompted to solve 25 PYQs on weakest topic
  *  - Skipped session is auto-rescheduled to Day +3
  */
-export default function TodaySchedulePanel({ currentDay, dayPlan, planProgress, studyPlan }) {
+export default function TodaySchedulePanel({ currentDay, planProgress, studyPlan }) {
     const {
         dailyTip,
         aiOverrides,
@@ -30,8 +32,12 @@ export default function TodaySchedulePanel({ currentDay, dayPlan, planProgress, 
         skipSession,
         markPyqPenaltyDone,
         getWeakestSubject,
-        skippedSessions,
     } = useAppStore();
+    const isRegenerating = useScheduleStore(state => state.isLoading);
+
+    const handleRegenerateSchedule = () => {
+        scheduleOptimizer.reoptimizeDailySchedule();
+    };
 
     // Skip-session modal state
     const [skipModalOpen, setSkipModalOpen] = useState(false);
@@ -133,11 +139,21 @@ export default function TodaySchedulePanel({ currentDay, dayPlan, planProgress, 
                             {getEffectiveToday().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
                         </p>
                     </div>
-                    {useAiMode && (
-                        <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-1 rounded-full border border-indigo-100 dark:border-indigo-800/50">
-                            <Sparkles size={10} /> Gemini AI
-                        </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                        {useAiMode && (
+                            <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-1 rounded-full border border-indigo-100 dark:border-indigo-800/50">
+                                <Sparkles size={10} /> Gemini AI
+                            </span>
+                        )}
+                        <button
+                            onClick={handleRegenerateSchedule}
+                            disabled={isRegenerating}
+                            title="Regenerate today's schedule with AI"
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-colors disabled:opacity-40"
+                        >
+                            <RefreshCw size={16} className={isRegenerating ? 'animate-spin' : ''} />
+                        </button>
+                    </div>
                 </div>
 
                 {/* Gemini Optimization Note */}

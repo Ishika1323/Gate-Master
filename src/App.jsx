@@ -6,7 +6,49 @@ import LoginPage from './components/Auth/LoginPage';
 import LogoutPage from './components/Auth/LogoutPage';
 import { supabase } from './lib/supabase';
 import useAppStore from './store/useAppStore';
+import { defaultPlanStart } from './data/studyPlan';
 import './styles/index.css';
+
+/**
+ * Reconcile the plan start date between the local store and the signed-in
+ * Supabase account.
+ *
+ * The 311-day plan was re-anchored to start "today". For guests this happens
+ * via the localStorage persist migration (useAppStore v1). Signed-in accounts
+ * carry their own plan_start_date in user_metadata, which would otherwise be
+ * pulled back down and re-pin the old date — including on a fresh browser where
+ * the localStorage migration never runs. We mirror the reset here, once per
+ * account, guarded by a plan_reset_v1 metadata flag so the plan advances
+ * normally after the one-time re-anchor.
+ */
+async function reconcilePlanStartWithAccount() {
+    const state = useAppStore.getState();
+    if (!supabase || !state.session || state.session.isGuest) return;
+
+    const meta = state.session.user?.user_metadata || {};
+    const metaStart = meta.plan_start_date;
+
+    // One-time account re-anchor to today.
+    if (!meta.plan_reset_v1) {
+        const today = defaultPlanStart();
+        state.setPlanStartDate(today);
+        // Spread existing metadata so we never clobber OAuth profile fields
+        // (name, avatar, etc.) regardless of merge/replace semantics.
+        await supabase.auth.updateUser({
+            data: { ...meta, plan_start_date: today, plan_reset_v1: true },
+        });
+        return;
+    }
+
+    // Normal steady-state sync between account metadata and local store.
+    if (metaStart && !state.planStartDate) {
+        state.setPlanStartDate(metaStart);
+    } else if (state.planStartDate && metaStart !== state.planStartDate) {
+        await supabase.auth.updateUser({
+            data: { ...meta, plan_start_date: state.planStartDate },
+        });
+    }
+}
 
 // Route-level code splitting: keep only the dashboard (landing route) eager.
 const PomodoroTimer = lazy(() => import('./components/Timer/PomodoroTimer'));
@@ -108,13 +150,7 @@ function App() {
             } else {
                 useAppStore.getState().setAuth(session);
             }
-            const state = useAppStore.getState();
-            const metaStart = state.session?.user?.user_metadata?.plan_start_date;
-            if (metaStart && !state.planStartDate) {
-                state.setPlanStartDate(metaStart);
-            } else if (state.planStartDate && metaStart !== state.planStartDate && state.session && !state.session.isGuest) {
-                await supabase.auth.updateUser({ data: { plan_start_date: state.planStartDate } });
-            }
+            await reconcilePlanStartWithAccount();
 
             if (_event === 'SIGNED_IN' || _event === 'TOKEN_REFRESHED' || isGuest) {
                 void load();
@@ -132,14 +168,8 @@ function App() {
             } else {
                 useAppStore.getState().setAuth(session);
             }
-            const state = useAppStore.getState();
-            const metaStart = state.session?.user?.user_metadata?.plan_start_date;
-            if (metaStart && !state.planStartDate) {
-                state.setPlanStartDate(metaStart);
-            } else if (state.planStartDate && metaStart !== state.planStartDate && state.session && !state.session.isGuest) {
-                await supabase.auth.updateUser({ data: { plan_start_date: state.planStartDate } });
-            }
-            
+            await reconcilePlanStartWithAccount();
+
             // Hydration safety: ensure store is ready before loading DB content
             if (useAppStore.persist?.hasHydrated && useAppStore.persist.hasHydrated()) {
                 void load();

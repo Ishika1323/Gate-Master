@@ -6,6 +6,21 @@ import { supabase } from '../lib/supabase';
 import useScheduleStore from './useScheduleStore';
 import { scheduleOptimizer } from '../services/scheduleOptimizer';
 
+/**
+ * Normalize a plan-start date (e.g. from VITE_PLAN_START_DATE) to the canonical
+ * `YYYY-MM-DD` the rest of the app parses. Accepts already-canonical strings as
+ * well as common variants like `07/07/2026` or `2026/07/07`; returns null if the
+ * value can't be parsed so callers can fall back safely.
+ */
+function normalizePlanStartDate(value) {
+    if (!value || typeof value !== 'string') return null;
+    const s = value.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    const parsed = new Date(s);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}-${String(parsed.getDate()).padStart(2, '0')}`;
+}
+
 const useAppStore = create(
     persist(
         (set, get) => ({
@@ -53,8 +68,10 @@ const useAppStore = create(
             initializeCurrentDay: () => {
                 const state = get();
                 const today = getEffectiveToday();
-                const envStart = import.meta.env.VITE_PLAN_START_DATE;
-                
+                // Accept VITE_PLAN_START_DATE in canonical YYYY-MM-DD or common
+                // variants (e.g. 07/07/2026); anything unparseable is ignored.
+                const envStart = normalizePlanStartDate(import.meta.env.VITE_PLAN_START_DATE);
+
                 let activeStart = state.planStartDate;
                 
                 // 1. Env Var Master Override

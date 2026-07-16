@@ -5,6 +5,12 @@ import usePyqStore from '../store/usePyqStore';
 import { GATE_CS_SUBJECTS } from '../data/gateSubjects';
 import { getDaysLeftLabel, getUpcomingComputedDates } from '../utils/gateExamDates';
 import { getEffectiveToday } from '../utils/dayBoundary';
+import {
+    buildSubjectPriority,
+    getPrioritizedWeakSubjects,
+    getFocusLevel,
+    DEFAULT_WEAK_FOCUS,
+} from '../ai/prioritization';
 
 export const scheduleOptimizer = {
     /**
@@ -13,10 +19,27 @@ export const scheduleOptimizer = {
     async reoptimizeDailySchedule() {
         const setScheduleLoading = useScheduleStore.getState().setScheduleLoading;
         const setActiveSchedule = useScheduleStore.getState().setActiveSchedule;
-        
-        const completedTopics = useAppStore.getState().completedSyllabusTopics;
+
+        const app = useAppStore.getState();
+        const completedTopics = app.completedSyllabusTopics;
         const weakAreas = usePyqStore.getState().weakAreas;
-        
+
+        // Unified, focus-scaled weak-area ranking so the AI schedule pushes weak
+        // subjects ahead of completed/strong ones.
+        const focusKey = app.settings?.weakAreaFocus || DEFAULT_WEAK_FOCUS;
+        const focusLevel = getFocusLevel(focusKey);
+        const priorityMap = buildSubjectPriority({
+            topicStrengths: app.topicStrengths,
+            pyqAttempts: app.pyqAttempts,
+            subjectStats: app.subjectStats,
+            completedSyllabusTopics: completedTopics,
+            focus: focusKey,
+        });
+        const rankedWeakSubjects = getPrioritizedWeakSubjects(priorityMap).map((s) => ({
+            name: s.name,
+            reasons: s.reasons,
+        }));
+
         const targetDate = getEffectiveToday().toISOString().split('T')[0];
         const { gateCse } = getUpcomingComputedDates();
         const daysToExam = Math.max(getDaysLeftLabel(gateCse).days, 0);
@@ -30,7 +53,9 @@ export const scheduleOptimizer = {
                 targetDate,
                 availableHours,
                 weakAreas,
-                daysToExam
+                daysToExam,
+                rankedWeakSubjects,
+                focusLabel: focusLevel.label,
             });
             
             // Send to both isolated viewer and central architecture

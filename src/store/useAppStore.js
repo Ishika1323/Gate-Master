@@ -428,6 +428,9 @@ const useAppStore = create(
                 soundEnabled: true,
                 autoStartBreak: true,
                 autoStartWork: false,
+                // How strongly weak topics are prioritized over completed/new ones
+                // across the daily plan and the AI schedule ('balanced' | 'high' | 'aggressive').
+                weakAreaFocus: 'high',
             },
             updateSettings: (updates) => set({
                 settings: { ...get().settings, ...updates }

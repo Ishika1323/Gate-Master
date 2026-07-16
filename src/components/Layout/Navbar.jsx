@@ -20,12 +20,14 @@ import {
 import useAppStore from '../../store/useAppStore';
 import { useGateExamDates } from '../../hooks/useGateExamDates';
 import GateExamBanner from './GateExamBanner';
+import SettingsModal from '../Settings/SettingsModal';
 
 export default function Navbar() {
     const { theme, toggleTheme, user } = useAppStore();
     const { gateCse, gateDa } = useGateExamDates();
     const navigate = useNavigate();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
     // Get user initials or first name
     const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
@@ -102,6 +104,7 @@ export default function Navbar() {
                             {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
                         </button>
                         <button
+                            onClick={() => setIsSettingsOpen(true)}
                             className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                             aria-label="Settings"
                         >
@@ -193,6 +196,13 @@ export default function Navbar() {
                             </div>
                             
                             <button
+                                onClick={() => { setIsMobileMenuOpen(false); setIsSettingsOpen(true); }}
+                                className="w-full flex items-center gap-3 px-4 py-4 rounded-xl text-base font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+                            >
+                                <Settings size={20} />
+                                Settings
+                            </button>
+                            <button
                                 onClick={() => { setIsMobileMenuOpen(false); navigate('/logout'); }}
                                 className="w-full flex items-center gap-3 px-4 py-4 rounded-xl text-base font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-all"
                             >
@@ -204,7 +214,7 @@ export default function Navbar() {
                 </div>
             )}
 
-
+            <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
         </>
     );
 }

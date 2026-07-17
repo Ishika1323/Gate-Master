@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { buildStudyPlan, defaultPlanStart, STUDY_PLAN_TOTAL_DAYS } from '../data/studyPlan';
+import { buildStudyPlan, defaultPlanStart, getPlanTotalDays } from '../data/studyPlan';
 import { getEffectiveToday } from '../utils/dayBoundary';
 import { supabase } from '../lib/supabase';
 import useScheduleStore from './useScheduleStore';
@@ -107,8 +107,9 @@ const useAppStore = create(
                 const diffTime = today.getTime() - startDate.getTime();
                 const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
                 
-                // Current day is days since start + 1 (Day 1 is the start date)
-                const calculatedDay = Math.min(Math.max(diffDays + 1, 1), STUDY_PLAN_TOTAL_DAYS);
+                // Current day is days since start + 1 (Day 1 is the start date),
+                // clamped to the dynamic plan length (start → exam date).
+                const calculatedDay = Math.min(Math.max(diffDays + 1, 1), getPlanTotalDays(activeStart));
                 set({ currentDay: calculatedDay });
                 return calculatedDay;
             },
@@ -540,7 +541,7 @@ const useAppStore = create(
 
                 // Find the next available day to reschedule (2-5 days out)
                 const currentDay = get().currentDay;
-                const rescheduleDay = Math.min(currentDay + 3, STUDY_PLAN_TOTAL_DAYS - 1);
+                const rescheduleDay = Math.min(currentDay + 3, getPlanTotalDays(get().planStartDate) - 1);
                 entry.rescheduledTo = rescheduleDay;
 
                 const updated = [...get().skippedSessions, entry];

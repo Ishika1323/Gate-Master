@@ -7,7 +7,6 @@ import Badge from '../UI/Badge';
 import { aiCoach } from '../../ai/aiCoach';
 import { adaptiveEngine } from '../../ai/adaptiveEngine';
 import { taskSuggester } from '../../ai/taskSuggester';
-import { STUDY_PLAN_TOTAL_DAYS } from '../../data/studyPlan';
 import { useMasterStudyPlan } from '../../hooks/useMasterStudyPlan';
 import { useGateExamDates } from '../../hooks/useGateExamDates';
 import { getDaysLeftLabel } from '../../utils/gateExamDates';
@@ -39,6 +38,7 @@ export default function ProgressDashboard() {
     } = useAppStore();
 
     const studyPlan = useMasterStudyPlan();
+    const totalPlanDays = studyPlan.length;
     const dayPlan = useMemo(() => studyPlan.find(d => d.day === currentDay) || studyPlan[0], [studyPlan, currentDay]);
 
     const allIds = useMemo(() => getAllSyllabusIds(), []);
@@ -101,7 +101,7 @@ export default function ProgressDashboard() {
                                 <div>
                                     <div className="text-brand-200 text-xs sm:text-sm font-medium mb-1 uppercase tracking-wider">Day</div>
                                     <div className="text-2xl sm:text-3xl font-mono font-bold">
-                                        {currentDay}<span className="text-brand-300 text-sm sm:text-lg">/{STUDY_PLAN_TOTAL_DAYS}</span>
+                                        {currentDay}<span className="text-brand-300 text-sm sm:text-lg">/{totalPlanDays}</span>
                                     </div>
                                     <div className="text-brand-300 text-[10px] sm:text-xs mt-1 font-medium bg-brand-900/40 px-2 py-0.5 rounded-full w-fit">
                                         {getEffectiveToday().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
@@ -361,15 +361,15 @@ export default function ProgressDashboard() {
             </div>
 
             {/* E. Schedule Projection Chart */}
-            <ScheduleProjectionChart 
+            <ScheduleProjectionChart
                 currentDay={currentDay}
                 planProgress={planProgress}
-                totalDays={STUDY_PLAN_TOTAL_DAYS}
+                totalDays={totalPlanDays}
             />
 
             {/* C. Overall Syllabus Heatmap */}
-            <SyllabusHeatmap 
-                totalDays={STUDY_PLAN_TOTAL_DAYS}
+            <SyllabusHeatmap
+                totalDays={totalPlanDays}
                 currentDay={currentDay}
                 planProgress={planProgress}
             />

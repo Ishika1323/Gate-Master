@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo } from 'react';
 import { Calendar, ChevronLeft, ChevronRight, CheckCircle2, Circle, Clock, AlertTriangle, ChevronDown, ArrowRight } from 'lucide-react';
 import Card from '../UI/Card';
 import Badge from '../UI/Badge';
-import { STUDY_PLAN_TOTAL_DAYS } from '../../data/studyPlan';
 import { useMasterStudyPlan } from '../../hooks/useMasterStudyPlan';
 import { getSubjectById } from '../../data/subjects';
 import useAppStore from '../../store/useAppStore';
@@ -26,6 +25,7 @@ export default function StudyPlanPage() {
         focus: focusKey,
     }), [topicStrengths, pyqAttempts, subjectStats, completedSyllabusTopics, focusKey]);
     const studyPlan = useMasterStudyPlan();
+    const totalPlanDays = studyPlan.length;
     const [viewDay, setViewDay] = useState(currentDay);
 
     // Initialize current day on mount and sync viewDay with currentDay
@@ -173,10 +173,10 @@ export default function StudyPlanPage() {
                 <div>
                     <h1 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
                         <Calendar className="w-8 h-8 text-brand-600" />
-                        {STUDY_PLAN_TOTAL_DAYS}-Day Planner
+                        {totalPlanDays}-Day Planner
                     </h1>
                     <p className="text-slate-500 mt-1">
-                        Full GATE CSE roadmap (~10.5 months): phased, subject-wise sessions with daily math, aptitude, and revision.
+                        Full GATE CSE roadmap from your start date to exam day: phased, subject-wise sessions with daily math, aptitude, and revision.
                     </p>
                 </div>
 
@@ -199,8 +199,8 @@ export default function StudyPlanPage() {
                         )}
                     </div>
                     <button
-                        onClick={() => setViewDay(Math.min(STUDY_PLAN_TOTAL_DAYS, viewDay + 1))}
-                        disabled={viewDay === STUDY_PLAN_TOTAL_DAYS}
+                        onClick={() => setViewDay(Math.min(totalPlanDays, viewDay + 1))}
+                        disabled={viewDay === totalPlanDays}
                         className="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-md disabled:opacity-30 transition-shadow hover:shadow-sm"
                     >
                         <ChevronRight className="w-5 h-5 text-slate-600 dark:text-slate-400" />

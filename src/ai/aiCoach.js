@@ -1,6 +1,6 @@
 // AI Coach that provides daily tips, recommendations, and strategic advice
 
-import { getStudyPlanPhase, STUDY_PLAN_TOTAL_DAYS } from '../data/studyPlan';
+import { getStudyPlanPhase, getPlanTotalDays } from '../data/studyPlan';
 
 const motivationalMessages = [
     "You're making excellent progress! Stay focused and trust your preparation.",
@@ -16,7 +16,7 @@ export const aiCoach = {
     // Generate daily recommendation based on day and performance (planStartISO = YYYY-MM-DD from store)
     getDailyRecommendation: (currentDay, subjectStats, tasks, planStartISO) => {
         const phase = getStudyPlanPhase(currentDay, planStartISO);
-        const daysRemaining = STUDY_PLAN_TOTAL_DAYS - currentDay;
+        const daysRemaining = getPlanTotalDays(planStartISO) - currentDay;
 
         if (phase.key === 'exam') {
             return {
@@ -91,8 +91,9 @@ export const aiCoach = {
     // Strategic advice based on exam proximity and calendar phase
     getStrategicAdvice: (currentDay, planStartISO) => {
         const phase = getStudyPlanPhase(currentDay, planStartISO);
-        const daysRemaining = STUDY_PLAN_TOTAL_DAYS - currentDay;
-        const fracLeft = daysRemaining / STUDY_PLAN_TOTAL_DAYS;
+        const totalDays = getPlanTotalDays(planStartISO);
+        const daysRemaining = totalDays - currentDay;
+        const fracLeft = daysRemaining / totalDays;
 
         if (phase.key === 'exam') {
             return '🎯 Exam day mindset — checklist, calm attempts, no cramming.';

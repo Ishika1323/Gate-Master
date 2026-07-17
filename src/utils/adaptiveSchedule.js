@@ -3,8 +3,6 @@
  * Completing a carry-over still marks the original (source) day + session in planProgress.
  */
 
-import { STUDY_PLAN_TOTAL_DAYS } from '../data/studyPlan';
-
 function isSessionMarkedDone(planProgress, dayNum, sessionId) {
     const dayProg = planProgress.find((p) => p.day === dayNum);
     return !!dayProg?.sessions?.find((s) => s.id === sessionId)?.completed;
@@ -78,7 +76,9 @@ function distributeBacklogAcrossDays(backlog, spreadStartDay, spreadEndDay) {
  */
 export function getSpreadAssignments(currentDay, planProgress, studyPlan) {
     const backlog = getPastBacklog(currentDay, planProgress, studyPlan);
-    const lastStudyDay = STUDY_PLAN_TOTAL_DAYS - 1;
+    // Last day before the exam, derived from the actual (dynamic) plan length.
+    const totalDays = studyPlan?.length || 0;
+    const lastStudyDay = Math.max(totalDays - 1, 1);
     // Include the current day in spread so backlog shows up TODAY
     const spreadStart = currentDay;
     const spreadEnd = lastStudyDay;
@@ -128,7 +128,7 @@ export function buildMergedScheduleRows(targetDay, currentDay, planProgress, stu
             assignedCarryCount: 0,
             backlogTotal: 0,
             spreadStart: currentDay + 1,
-            spreadEnd: STUDY_PLAN_TOTAL_DAYS - 1,
+            spreadEnd: Math.max((studyPlan?.length || 0) - 1, 1),
         };
     }
 

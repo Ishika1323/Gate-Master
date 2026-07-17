@@ -12,6 +12,7 @@
  *   R   — Daily Reflection & Mistake Logging (30 min)
  */
 
+import { differenceInCalendarDays } from 'date-fns';
 import {
     addPlanDays,
     buildCatchupQueue,
@@ -20,13 +21,32 @@ import {
     getMissedWaveMonths,
     isTestSeriesPhase,
     monthName,
+    parsePlanStart,
     WAVE_MONTHS,
 } from './calendarCurriculum';
 import { getMathAlternatingTopic } from './detailedCurriculum';
 import { TEST_SERIES } from './testSeries';
+import { getExamDateForPlan } from '../utils/gateExamDates';
 
+// Fallback length only — the real plan length is computed from the start date to
+// the actual GATE exam date (see getPlanTotalDays).
 export const STUDY_PLAN_TOTAL_DAYS = 311;
 export const STUDY_PLAN_EXAM_DAY = STUDY_PLAN_TOTAL_DAYS;
+
+/**
+ * Number of plan days from the start date up to and including the GATE exam
+ * date, so the plan spans exactly start → exam (Day N = exam day). Falls back
+ * to the fixed length if the exam date can't be resolved sensibly.
+ * @param {string} planStartISO - YYYY-MM-DD
+ */
+export function getPlanTotalDays(planStartISO) {
+    const startISO = planStartISO || defaultPlanStart();
+    const start = parsePlanStart(startISO);
+    const exam = getExamDateForPlan(startISO);
+    const total = differenceInCalendarDays(exam, start) + 1;
+    if (!Number.isFinite(total) || total < 7) return STUDY_PLAN_TOTAL_DAYS;
+    return total;
+}
 
 export function planDateKey(planStartISO, dayIndex0) {
     return addPlanDays(planStartISO, dayIndex0).toISOString().split('T')[0];
@@ -34,8 +54,8 @@ export function planDateKey(planStartISO, dayIndex0) {
 
 /** @param {string} planStartISO - YYYY-MM-DD */
 export function getStudyPlanPhase(day, planStartISO) {
-    const start = planStartISO || new Date().toISOString().split('T')[0];
-    if (day >= STUDY_PLAN_EXAM_DAY) {
+    const start = planStartISO || defaultPlanStart();
+    if (day >= getPlanTotalDays(start)) {
         return {
             key: 'exam',
             title: 'GATE Exam Day',
@@ -264,7 +284,9 @@ function buildTestSeriesMain(ctx, day) {
  * Build full plan from canonical start date (store planStartDate).
  */
 export function buildStudyPlan(planStartISO) {
-    const start = planStartISO || new Date().toISOString().split('T')[0];
+    const start = planStartISO || defaultPlanStart();
+    const totalDays = getPlanTotalDays(start);
+    const examDay = totalDays;
     const catchupQueue = buildCatchupQueue(start);
     const ctx = {
         catchupQueue,
@@ -273,12 +295,12 @@ export function buildStudyPlan(planStartISO) {
     };
 
     const days = [];
-    for (let day = 1; day <= STUDY_PLAN_TOTAL_DAYS; day++) {
+    for (let day = 1; day <= totalDays; day++) {
         const date = addPlanDays(start, day - 1);
         const dateString = planDateKey(start, day - 1);
         const phase = getStudyPlanPhase(day, start);
 
-        if (day === STUDY_PLAN_EXAM_DAY) {
+        if (day === examDay) {
             days.push({
                 day,
                 date: dateString,

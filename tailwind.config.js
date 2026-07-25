@@ -8,18 +8,18 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Primary brand colors - Clean & Professional
+        // Primary brand colors - Terminal × Ascent violet (deck signature)
         brand: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
-          800: '#1e40af',
-          900: '#1e3a8a',
+          50: '#f1eeff',
+          100: '#e4ddff',
+          200: '#cabaff',
+          300: '#ab92ff',
+          400: '#9274ff',
+          500: '#7c5cff',
+          600: '#6d4dfa',
+          700: '#5b3ce8',
+          800: '#4a31bd',
+          900: '#2e2170',
         },
         // Accent colors
         accent: {

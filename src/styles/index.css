@@ -30,28 +30,40 @@
 }
 
 .dark {
-  /* Dark theme - Deep navy with blue accents */
-  --bg-primary: #0f172a;
-  --bg-secondary: #1e293b;
-  --bg-tertiary: #334155;
-  --bg-elevated: #1e293b;
+  /* Dark theme - Terminal × Ascent near-black neon command deck */
+  --bg-primary: #05070c;
+  --bg-secondary: #070b12;
+  --bg-tertiary: #141c2b;
+  --bg-elevated: #0a0f18;
 
-  --text-primary: #f1f5f9;
-  --text-secondary: #cbd5e1;
-  --text-tertiary: #64748b;
+  --text-primary: #eafff9;
+  --text-secondary: #cdd7e6;
+  --text-tertiary: #7f8ba3;
 
-  --border-light: #334155;
-  --border-DEFAULT: #475569;
-  --border-strong: #64748b;
+  --border-light: #141c2b;
+  --border-DEFAULT: #1b2536;
+  --border-strong: #2a3550;
 
-  --brand-600: #3b82f6;
-  --brand-700: #2563eb;
+  --brand-600: #7c5cff;
+  --brand-700: #6a4cf0;
 
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
-  --shadow: 0 2px 4px 0 rgb(0 0 0 / 0.3), 0 1px 2px 0 rgb(0 0 0 / 0.3);
-  --shadow-md: 0 6px 10px -1px rgb(0 0 0 / 0.3), 0 2px 4px -1px rgb(0 0 0 / 0.3);
-  --shadow-lg: 0 15px 25px -3px rgb(0 0 0 / 0.3), 0 6px 10px -2px rgb(0 0 0 / 0.3);
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.45);
+  --shadow: 0 2px 4px 0 rgb(0 0 0 / 0.45), 0 1px 2px 0 rgb(0 0 0 / 0.45);
+  --shadow-md: 0 6px 12px -1px rgb(0 0 0 / 0.5), 0 2px 4px -1px rgb(0 0 0 / 0.45);
+  --shadow-lg: 0 16px 28px -3px rgb(0 0 0 / 0.55), 0 6px 10px -2px rgb(0 0 0 / 0.5);
 }
+
+/* Panels/cards on the deck read as gradient neon-line surfaces. */
+.dark .card,
+.dark .stat-card {
+  background: linear-gradient(180deg, var(--deck-panel), var(--deck-panel2));
+}
+.dark .card:hover { border-color: rgba(124, 92, 255, .28); }
+.dark .stat-value { color: var(--deck-cyan); }
+.dark .badge-primary { background: rgba(124, 92, 255, .15); color: #c3b1ff; }
+.dark .badge-success { background: rgba(55, 211, 153, .15); color: var(--deck-green); }
+.dark .badge-warning { background: rgba(245, 182, 78, .15); color: var(--deck-warn); }
+.dark .badge-danger { background: rgba(255, 107, 122, .15); color: var(--deck-bad); }
 
 * {
   margin: 0;

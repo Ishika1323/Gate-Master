@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard,
@@ -15,12 +15,24 @@ import {
     BrainCircuit,
     Layers,
     LogOut,
-    User
 } from 'lucide-react';
 import useAppStore from '../../store/useAppStore';
 import { useGateExamDates } from '../../hooks/useGateExamDates';
 import GateExamBanner from './GateExamBanner';
 import SettingsModal from '../Settings/SettingsModal';
+
+// Command deck navigation — each route carries a single-key shortcut so the
+// whole app is keyboard-drivable (Terminal × Ascent).
+const navItems = [
+    { path: '/', label: 'Command Deck', icon: <LayoutDashboard size={16} />, glyph: '◉', key: 'D' },
+    { path: '/plan', label: 'Study Plan', icon: <Calendar size={16} />, glyph: '▚', key: 'P' },
+    { path: '/analysis', label: 'Analytics', icon: <BarChart2 size={16} />, glyph: '◈', key: 'A' },
+    { path: '/timer', label: 'Focus Timer', icon: <Timer size={16} />, glyph: '⧗', key: 'T' },
+    { path: '/pyq', label: 'PYQ Log', icon: <BrainCircuit size={16} />, glyph: '✎', key: 'Q' },
+    { path: '/topics', label: 'Topic Board', icon: <Layers size={16} />, glyph: '▦', key: 'B' },
+    { path: '/tasks', label: 'Missions', icon: <CheckSquare size={16} />, glyph: '☑', key: 'M' },
+    { path: '/syllabus', label: 'Syllabus', icon: <BookOpen size={16} />, glyph: '▤', key: 'S' },
+];
 
 export default function Navbar() {
     const { theme, toggleTheme, user } = useAppStore();
@@ -29,124 +41,117 @@ export default function Navbar() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-    // Get user initials or first name
-    const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
+    const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'operator';
     const userAvatar = user?.user_metadata?.avatar_url;
 
-    const navItems = [
-        { path: '/', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
-        { path: '/timer', label: 'Focus Timer', icon: <Timer size={20} /> },
-        { path: '/tasks', label: 'Tasks', icon: <CheckSquare size={20} /> },
-        { path: '/plan', label: 'Study Plan', icon: <Calendar size={20} /> },
-        { path: '/syllabus', label: 'Syllabus', icon: <BookOpen size={20} /> },
-        { path: '/analysis', label: 'Analytics', icon: <BarChart2 size={20} /> },
-        { path: '/topics', label: 'Topic Board', icon: <Layers size={20} /> },
-        { path: '/pyq', label: 'PYQ Training', icon: <BrainCircuit size={20} /> },
-    ];
+    // Keyboard shortcuts: press a route's letter to jump there (ignoring typing
+    // inside inputs / when a modifier is held).
+    const handleKey = useCallback((e) => {
+        if (e.metaKey || e.ctrlKey || e.altKey) return;
+        const tag = document.activeElement?.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement?.isContentEditable) return;
+        const item = navItems.find((n) => n.key.toLowerCase() === e.key.toLowerCase());
+        if (item) {
+            e.preventDefault();
+            navigate(item.path);
+        }
+    }, [navigate]);
+
+    useEffect(() => {
+        window.addEventListener('keydown', handleKey);
+        return () => window.removeEventListener('keydown', handleKey);
+    }, [handleKey]);
+
+    const navLinkClass = ({ isActive }) => `deck-navlink${isActive ? ' on' : ''}`;
 
     return (
         <>
-            {/* Desktop Sidebar */}
-            <nav className="hidden md:flex flex-col w-64 fixed h-full bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 z-50 transition-colors duration-200">
-                <div className="p-6">
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center text-white font-bold text-xl">
-                            G
-                        </div>
-                        <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
-                            Gate<span className="text-brand-600">Master</span>
-                        </h1>
+            {/* Desktop terminal sidebar */}
+            <nav className="deck-side hidden md:flex flex-col w-64 fixed h-full z-50 px-3 py-4">
+                <div className="flex items-center gap-2.5 px-2 pb-3">
+                    <div className="deck-logo w-7 h-7 rounded-lg grid place-items-center text-white font-extrabold font-sans">
+                        G
                     </div>
-                    <GateExamBanner gateCse={gateCse} gateDa={gateDa} className="mt-4 border-t-0 pt-0" />
+                    <b className="font-sans tracking-tight text-deck-inkb text-[15px]">
+                        Gate<span className="text-deck-violet">Master</span>
+                    </b>
                 </div>
 
-                <div className="px-6 mb-6">
-                    <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800/50">
-                        {userAvatar ? (
-                            <img src={userAvatar} alt={userName} className="w-10 h-10 rounded-full border-2 border-brand-500/20" />
-                        ) : (
-                            <div className="w-10 h-10 rounded-full bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center text-brand-600 dark:text-brand-400 font-bold">
-                                {userName.charAt(0).toUpperCase()}
-                            </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{userName}</p>
-                            <p className="text-[10px] text-slate-500 dark:text-slate-500 truncate">{user?.email}</p>
+                <GateExamBanner gateCse={gateCse} gateDa={gateDa} className="mb-2 border-t-0 pt-0" />
+
+                {/* User chip */}
+                <div className="flex items-center gap-2.5 mb-3 p-2.5 rounded-xl border border-deck-line2 bg-deck-panel2">
+                    {userAvatar ? (
+                        <img src={userAvatar} alt={userName} className="w-8 h-8 rounded-full border border-deck-violet/30" />
+                    ) : (
+                        <div className="w-8 h-8 rounded-full grid place-items-center text-deck-cyan font-bold bg-deck-panel border border-deck-line2">
+                            {userName.charAt(0).toUpperCase()}
                         </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-deck-inkb truncate">{userName}</p>
+                        <p className="text-[10px] text-deck-muted truncate">{user?.email || 'local session'}</p>
                     </div>
                 </div>
 
-                <div className="flex-1 px-4 space-y-1 overflow-y-auto">
+                <div className="flex-1 flex flex-col gap-0.5 overflow-y-auto">
                     {navItems.map((item) => (
-                        <NavLink
-                            key={item.path}
-                            to={item.path}
-                            className={({ isActive }) => `
-                flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200
-                ${isActive
-                                    ? 'bg-brand-50 text-brand-700 dark:bg-brand-900/10 dark:text-brand-300 shadow-sm'
-                                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200'}
-              `}
-                        >
-                            {item.icon}
+                        <NavLink key={item.path} to={item.path} end={item.path === '/'} className={navLinkClass}>
+                            <span className="deck-ic">{item.glyph}</span>
                             {item.label}
+                            <span className="deck-kbd">{item.key}</span>
                         </NavLink>
                     ))}
                 </div>
 
-                <div className="p-4 border-t border-slate-200 dark:border-slate-800">
-                    <div className="flex items-center justify-between px-2">
+                <div className="mt-3 pt-3 border-t border-deck-line">
+                    <div className="flex items-center justify-between px-1">
                         <button
                             onClick={toggleTheme}
-                            className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                            className="p-2 rounded-lg text-deck-muted2 hover:text-deck-inkb hover:bg-deck-panel2 transition-colors"
                             aria-label="Toggle Theme"
                         >
-                            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+                            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
                         </button>
                         <button
                             onClick={() => setIsSettingsOpen(true)}
-                            className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                            className="p-2 rounded-lg text-deck-muted2 hover:text-deck-inkb hover:bg-deck-panel2 transition-colors"
                             aria-label="Settings"
                         >
-                            <Settings size={20} />
+                            <Settings size={18} />
                         </button>
                         <button
                             onClick={() => navigate('/logout')}
-                            className="p-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                            className="p-2 rounded-lg text-deck-bad hover:bg-deck-bad/10 transition-colors"
                             aria-label="Logout"
                         >
-                            <LogOut size={20} />
+                            <LogOut size={18} />
                         </button>
                     </div>
-                    <div className="mt-4 px-2">
-                        <div className="text-xs text-slate-400 dark:text-slate-500 font-medium">
-                            v1.0.0 • GATE {gateCse.getFullYear()}
-                        </div>
+                    <div className="mt-3 px-1 text-[10.5px] text-deck-muted font-mono leading-tight">
+                        v2.0 · GATE {gateCse.getFullYear()}<br />Season · {gateCse.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }).replace(' ', ' ’')}
                     </div>
                 </div>
             </nav>
 
-            {/* Mobile Header */}
-            <div className="md:hidden fixed top-0 w-full bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-50 px-4 py-2">
+            {/* Mobile header */}
+            <div className="deck-side md:hidden fixed top-0 w-full z-50 px-4 py-2 border-r-0 border-b border-deck-line">
                 <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-7 h-7 shrink-0 rounded-md bg-brand-600 flex items-center justify-center text-white font-bold">
+                        <div className="deck-logo w-7 h-7 shrink-0 rounded-md grid place-items-center text-white font-bold font-sans">
                             G
                         </div>
-                        <h1 className="text-lg font-bold text-slate-900 dark:text-white truncate">
-                            Gate<span className="text-brand-600">Master</span>
-                        </h1>
+                        <b className="font-sans text-base text-deck-inkb truncate">
+                            Gate<span className="text-deck-violet">Master</span>
+                        </b>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                        <button
-                            onClick={toggleTheme}
-                            className="p-2 text-slate-500"
-                        >
+                    <div className="flex items-center gap-1 shrink-0">
+                        <button onClick={toggleTheme} className="p-2 text-deck-muted2">
                             {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
                         </button>
                         <button
                             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                            className="p-2 text-slate-600 dark:text-slate-300"
+                            className="p-2 text-deck-ink"
                         >
                             {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
                         </button>
@@ -155,58 +160,55 @@ export default function Navbar() {
                 <GateExamBanner
                     gateCse={gateCse}
                     gateDa={gateDa}
-                    className="mt-2 border-t border-slate-100 dark:border-slate-800 pt-2"
+                    className="mt-2 border-t border-deck-line pt-2"
                 />
             </div>
 
-            {/* Mobile Menu Overlay */}
+            {/* Mobile menu overlay */}
             {isMobileMenuOpen && (
-                <div className="md:hidden fixed inset-0 z-40 bg-white dark:bg-slate-900 pt-32 px-4 pb-6 overflow-y-auto w-full h-screen">
-                    <div className="space-y-2">
+                <div className="deck-shell md:hidden fixed inset-0 z-40 pt-32 px-4 pb-6 overflow-y-auto w-full h-screen">
+                    <div className="flex flex-col gap-1.5">
                         {navItems.map((item) => (
                             <NavLink
                                 key={item.path}
                                 to={item.path}
+                                end={item.path === '/'}
                                 onClick={() => setIsMobileMenuOpen(false)}
-                                className={({ isActive }) => `
-                  flex items-center gap-3 px-4 py-4 rounded-xl text-base font-medium transition-all
-                  ${isActive
-                                        ? 'bg-brand-50 text-brand-700 dark:bg-brand-900/10 dark:text-brand-300'
-                                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}
-                `}
+                                className={({ isActive }) => `deck-navlink text-sm py-3${isActive ? ' on' : ''}`}
                             >
-                                {item.icon}
+                                <span className="deck-ic">{item.glyph}</span>
                                 {item.label}
+                                <span className="deck-kbd">{item.key}</span>
                             </NavLink>
                         ))}
-                        
-                        <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800">
-                             <div className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl mb-4">
+
+                        <div className="pt-4 mt-3 border-t border-deck-line">
+                            <div className="flex items-center gap-3 p-3 rounded-2xl border border-deck-line2 bg-deck-panel2 mb-3">
                                 {userAvatar ? (
-                                    <img src={userAvatar} alt={userName} className="w-12 h-12 rounded-full border-2 border-brand-500/20" />
+                                    <img src={userAvatar} alt={userName} className="w-11 h-11 rounded-full border border-deck-violet/30" />
                                 ) : (
-                                    <div className="w-12 h-12 rounded-full bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center text-brand-600 dark:text-brand-400 font-bold text-xl">
+                                    <div className="w-11 h-11 rounded-full grid place-items-center text-deck-cyan font-bold text-lg bg-deck-panel border border-deck-line2">
                                         {userName.charAt(0).toUpperCase()}
                                     </div>
                                 )}
                                 <div className="flex-1 min-w-0">
-                                    <p className="font-bold text-slate-900 dark:text-white truncate">{userName}</p>
-                                    <p className="text-xs text-slate-500 dark:text-slate-500 truncate">{user?.email}</p>
+                                    <p className="font-semibold text-deck-inkb truncate">{userName}</p>
+                                    <p className="text-xs text-deck-muted truncate">{user?.email || 'local session'}</p>
                                 </div>
                             </div>
-                            
+
                             <button
                                 onClick={() => { setIsMobileMenuOpen(false); setIsSettingsOpen(true); }}
-                                className="w-full flex items-center gap-3 px-4 py-4 rounded-xl text-base font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+                                className="deck-navlink w-full text-sm py-3"
                             >
-                                <Settings size={20} />
+                                <span className="deck-ic"><Settings size={16} /></span>
                                 Settings
                             </button>
                             <button
                                 onClick={() => { setIsMobileMenuOpen(false); navigate('/logout'); }}
-                                className="w-full flex items-center gap-3 px-4 py-4 rounded-xl text-base font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-all"
+                                className="deck-navlink w-full text-sm py-3 text-deck-bad"
                             >
-                                <LogOut size={20} />
+                                <span className="deck-ic" style={{ color: 'var(--deck-bad)' }}><LogOut size={16} /></span>
                                 Logout
                             </button>
                         </div>

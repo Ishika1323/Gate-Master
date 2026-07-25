@@ -29,6 +29,26 @@ export default {
           amber: { light: '#fcd34d', DEFAULT: '#f59e0b', dark: '#d97706' },
           rose: { light: '#fda4af', DEFAULT: '#f43f5e', dark: '#e11d48' },
         },
+        // Terminal × Ascent neon command-deck palette
+        deck: {
+          bg: '#05070c',
+          bg2: '#070b12',
+          panel: '#0a0f18',
+          panel2: '#0b1120',
+          line: '#141c2b',
+          line2: '#1b2536',
+          ink: '#cdd7e6',
+          inkb: '#eafff9',
+          muted: '#56617a',
+          muted2: '#7f8ba3',
+          cyan: '#35e0d0',
+          green: '#37d399',
+          violet: '#7c5cff',
+          magenta: '#ff4f9e',
+          gold: '#ffd76a',
+          warn: '#f5b64e',
+          bad: '#ff6b7a',
+        },
         // Subject colors - Muted professional tones
         subject: {
           ds: '#3b82f6',       // Blue

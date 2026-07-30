@@ -115,6 +115,21 @@ function App() {
     }
   }, [theme]);
 
+  // Compute the current plan day on every boot, independent of the auth-gated
+  // load() path (which can fail to fire on the guest/local flow). Without this,
+  // currentDay stays stuck at its initial value of 1 until StudyPlanPage mounts,
+  // so the dashboard and every other currentDay-derived view show the wrong day.
+  useEffect(() => {
+    const run = () => useAppStore.getState().initializeCurrentDay();
+    if (useAppStore.persist?.hasHydrated?.()) {
+      run();
+    } else if (useAppStore.persist?.onFinishHydration) {
+      useAppStore.persist.onFinishHydration(run);
+    } else {
+      run();
+    }
+  }, []);
+
   useEffect(() => {
     let dataLoaded = false;
 

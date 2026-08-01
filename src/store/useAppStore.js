@@ -53,9 +53,15 @@ const useAppStore = create(
                     planStartDate: meta.plan_start_date || get().planStartDate,
                 });
                 get().initializeCurrentDay();
-                const dbModule = await import('../services/db');
-                await dbModule.bootstrapLocalFromPersisted(get());
-                await get().hydrateFromDb();
+                // Best-effort data sync — a Supabase/IndexedDB hiccup (missing
+                // tables, private-mode storage) must never block the login.
+                try {
+                    const dbModule = await import('../services/db');
+                    await dbModule.bootstrapLocalFromPersisted(get());
+                    await get().hydrateFromDb();
+                } catch (error) {
+                    console.warn('Post-login data sync failed (continuing):', error);
+                }
                 get().syncStudyPlan();
                 return session;
             },

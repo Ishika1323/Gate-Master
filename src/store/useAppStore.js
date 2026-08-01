@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { buildStudyPlan, defaultPlanStart, STUDY_PLAN_TOTAL_DAYS } from '../data/studyPlan';
+import { buildStudyPlan, defaultPlanStart } from '../data/studyPlan';
+import { buildPlanById, getPlanTotalDays } from '../data/planRegistry';
+import { signInLocal } from '../services/localAuth';
 import { getEffectiveToday } from '../utils/dayBoundary';
 import { supabase } from '../lib/supabase';
 import useScheduleStore from './useScheduleStore';
@@ -23,10 +25,39 @@ const useAppStore = create(
             setAuth: (session) => set({ session, user: session?.user || null, authLoading: false }),
             setAuthLoading: (loading) => set({ authLoading: loading }),
             signOut: async () => {
-                if (supabase) {
+                const current = get().session;
+                if (supabase && !current?.isLocal && !current?.isGuest) {
                     await supabase.auth.signOut();
-                    set({ session: null, user: null, authLoading: false });
                 }
+                // Local profile users carry their own plan; drop it on the way out
+                // so the next visitor falls back to the default plan cleanly.
+                const patch = { session: null, user: null, authLoading: false };
+                if (current?.isLocal) {
+                    patch.activePlanId = null;
+                    patch.planStartDate = null;
+                }
+                set(patch);
+            },
+            /**
+             * Email/password sign-in against locally seeded accounts.
+             * Activates the profile's personal plan and reloads progress data.
+             */
+            signInWithPassword: async (email, password) => {
+                const session = await signInLocal(email, password);
+                const meta = session.user.user_metadata || {};
+                set({
+                    session,
+                    user: session.user,
+                    authLoading: false,
+                    activePlanId: meta.plan_id || null,
+                    planStartDate: meta.plan_start_date || get().planStartDate,
+                });
+                get().initializeCurrentDay();
+                const dbModule = await import('../services/db');
+                await dbModule.bootstrapLocalFromPersisted(get());
+                await get().hydrateFromDb();
+                get().syncStudyPlan();
+                return session;
             },
             signInWithGoogle: async () => {
                 if (supabase) {
@@ -44,6 +75,11 @@ const useAppStore = create(
             planStartDate: null,
             setPlanStartDate: (date) => set({ planStartDate: date }),
 
+            // Active plan — null/default = built-in 311-day roadmap; user
+            // profiles may activate a custom plan (see data/planRegistry.js).
+            activePlanId: null,
+            setActivePlan: (planId) => set({ activePlanId: planId }),
+
             // Current day (1..STUDY_PLAN_TOTAL_DAYS) - calculated based on planStartDate
             currentDay: (() => {
                 // This will be recalculated on initialization
@@ -56,9 +92,10 @@ const useAppStore = create(
                 const envStart = import.meta.env.VITE_PLAN_START_DATE;
                 
                 let activeStart = state.planStartDate;
-                
-                // 1. Env Var Master Override
-                if (envStart && activeStart !== envStart) {
+
+                // 1. Env Var Master Override (custom plans carry fixed dates —
+                //    never let the env var shift them)
+                if (envStart && activeStart !== envStart && !state.activePlanId) {
                     activeStart = envStart;
                     set({ planStartDate: activeStart });
                     // Anchor it publicly to Supabase
@@ -91,7 +128,8 @@ const useAppStore = create(
                 const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
                 
                 // Current day is days since start + 1 (Day 1 is the start date)
-                const calculatedDay = Math.min(Math.max(diffDays + 1, 1), STUDY_PLAN_TOTAL_DAYS);
+                const totalDays = getPlanTotalDays(state.activePlanId);
+                const calculatedDay = Math.min(Math.max(diffDays + 1, 1), totalDays);
                 set({ currentDay: calculatedDay });
                 return calculatedDay;
             },
@@ -294,7 +332,7 @@ const useAppStore = create(
                 if (!sessionProg?.completed) return;
 
                 // 2. Mark topic.completed
-                const plan = buildStudyPlan(get().planStartDate || defaultPlanStart());
+                const plan = buildPlanById(get().activePlanId, get().planStartDate || defaultPlanStart());
                 const aiOverrides = get().aiOverrides || {};
                 let session = plan.find(d => d.day === day)?.sessions?.find(s => s.id === sessionId);
 
@@ -346,7 +384,7 @@ const useAppStore = create(
             syncStudyPlan: () => {
                 const state = get();
                 const existingProgress = state.planProgress;
-                const sourcePlan = buildStudyPlan(state.planStartDate || defaultPlanStart());
+                const sourcePlan = buildPlanById(state.activePlanId, state.planStartDate || defaultPlanStart());
 
                 // Safety: If no progress or empty, init from scratch
                 if (!Array.isArray(existingProgress) || existingProgress.length === 0) {
@@ -520,7 +558,7 @@ const useAppStore = create(
 
                 // Find the next available day to reschedule (2-5 days out)
                 const currentDay = get().currentDay;
-                const rescheduleDay = Math.min(currentDay + 3, STUDY_PLAN_TOTAL_DAYS - 1);
+                const rescheduleDay = Math.min(currentDay + 3, getPlanTotalDays(get().activePlanId) - 1);
                 entry.rescheduledTo = rescheduleDay;
 
                 const updated = [...get().skippedSessions, entry];

@@ -13,8 +13,20 @@ const motivationalMessages = [
 ];
 
 export const aiCoach = {
-    // Generate daily recommendation based on day and performance (planStartISO = YYYY-MM-DD from store)
-    getDailyRecommendation: (currentDay, subjectStats, tasks, planStartISO) => {
+    // Generate daily recommendation based on day and performance (planStartISO = YYYY-MM-DD from store).
+    // planContext ({ totalDays, phase, phaseSubtitle }) is supplied when a custom
+    // plan is active — its phases replace the built-in 311-day phase model.
+    getDailyRecommendation: (currentDay, subjectStats, tasks, planStartISO, planContext) => {
+        if (planContext) {
+            const daysRemaining = Math.max(planContext.totalDays - currentDay, 0);
+            return {
+                phase: planContext.phase,
+                focus:
+                    (planContext.phaseSubtitle || 'Execute today\'s scheduled blocks.') +
+                    (daysRemaining <= 14 ? ` (~${daysRemaining} days to exam week.)` : ''),
+                priority: 'Hold the daily frame: math dawn » technical dawn » evening burn',
+            };
+        }
         const phase = getStudyPlanPhase(currentDay, planStartISO);
         const daysRemaining = STUDY_PLAN_TOTAL_DAYS - currentDay;
 
@@ -88,17 +100,21 @@ export const aiCoach = {
         return tip;
     },
 
-    // Strategic advice based on exam proximity and calendar phase
-    getStrategicAdvice: (currentDay, planStartISO) => {
-        const phase = getStudyPlanPhase(currentDay, planStartISO);
-        const daysRemaining = STUDY_PLAN_TOTAL_DAYS - currentDay;
-        const fracLeft = daysRemaining / STUDY_PLAN_TOTAL_DAYS;
+    // Strategic advice based on exam proximity and calendar phase.
+    // planContext.totalDays overrides the built-in plan length for custom plans.
+    getStrategicAdvice: (currentDay, planStartISO, planContext) => {
+        const totalDays = planContext?.totalDays || STUDY_PLAN_TOTAL_DAYS;
+        const daysRemaining = totalDays - currentDay;
+        const fracLeft = daysRemaining / totalDays;
 
-        if (phase.key === 'exam') {
-            return '🎯 Exam day mindset — checklist, calm attempts, no cramming.';
-        }
-        if (phase.key === 'testseries') {
-            return '📝 Test series phase — honor sheet order; analysis beats volume of new theory.';
+        if (!planContext) {
+            const phase = getStudyPlanPhase(currentDay, planStartISO);
+            if (phase.key === 'exam') {
+                return '🎯 Exam day mindset — checklist, calm attempts, no cramming.';
+            }
+            if (phase.key === 'testseries') {
+                return '📝 Test series phase — honor sheet order; analysis beats volume of new theory.';
+            }
         }
         if (fracLeft <= 0.03) {
             return '🎯 Final stretch. No new topics — crisp notes, logistics, sleep.';

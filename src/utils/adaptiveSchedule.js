@@ -78,7 +78,10 @@ function distributeBacklogAcrossDays(backlog, spreadStartDay, spreadEndDay) {
  */
 export function getSpreadAssignments(currentDay, planProgress, studyPlan) {
     const backlog = getPastBacklog(currentDay, planProgress, studyPlan);
-    const lastStudyDay = STUDY_PLAN_TOTAL_DAYS - 1;
+    // Derive the horizon from the plan itself so custom plans (different
+    // lengths) spread their backlog correctly.
+    const totalDays = studyPlan?.length || STUDY_PLAN_TOTAL_DAYS;
+    const lastStudyDay = totalDays - 1;
     // Include the current day in spread so backlog shows up TODAY
     const spreadStart = currentDay;
     const spreadEnd = lastStudyDay;
@@ -128,7 +131,7 @@ export function buildMergedScheduleRows(targetDay, currentDay, planProgress, stu
             assignedCarryCount: 0,
             backlogTotal: 0,
             spreadStart: currentDay + 1,
-            spreadEnd: STUDY_PLAN_TOTAL_DAYS - 1,
+            spreadEnd: (studyPlan?.length || STUDY_PLAN_TOTAL_DAYS) - 1,
         };
     }
 

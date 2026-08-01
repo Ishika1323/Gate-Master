@@ -1,18 +1,20 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Calendar, ChevronLeft, ChevronRight, CheckCircle2, Circle, Clock, AlertTriangle, ChevronDown, ArrowRight } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, CheckCircle2, Circle, Clock, AlertTriangle, ChevronDown, ArrowRight, Trophy } from 'lucide-react';
 import Card from '../UI/Card';
 import Badge from '../UI/Badge';
-import { STUDY_PLAN_TOTAL_DAYS } from '../../data/studyPlan';
 import { useMasterStudyPlan } from '../../hooks/useMasterStudyPlan';
+import { getPlanMeta } from '../../data/planRegistry';
 import { getSubjectById } from '../../data/subjects';
 import useAppStore from '../../store/useAppStore';
 import { buildMergedScheduleRows, countCompletedInRows, getBacklogDistributionSummary } from '../../utils/adaptiveSchedule';
 import { getEffectiveToday } from '../../utils/dayBoundary';
 
 export default function StudyPlanPage() {
-    const { currentDay, planProgress, toggleSessionComplete, initializeCurrentDay } =
+    const { currentDay, planProgress, toggleSessionComplete, initializeCurrentDay, activePlanId } =
         useAppStore();
     const studyPlan = useMasterStudyPlan();
+    const totalPlanDays = studyPlan.length;
+    const planMeta = getPlanMeta(activePlanId);
     const [viewDay, setViewDay] = useState(currentDay);
 
     // Initialize current day on mount and sync viewDay with currentDay
@@ -157,10 +159,10 @@ export default function StudyPlanPage() {
                 <div>
                     <h1 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
                         <Calendar className="w-8 h-8 text-brand-600" />
-                        {STUDY_PLAN_TOTAL_DAYS}-Day Planner
+                        {activePlanId ? planMeta.name : `${totalPlanDays}-Day Planner`}
                     </h1>
                     <p className="text-slate-500 mt-1">
-                        Full GATE CSE roadmap (~10.5 months): phased, subject-wise sessions with daily math, aptitude, and revision.
+                        {planMeta.description}
                     </p>
                 </div>
 
@@ -183,8 +185,8 @@ export default function StudyPlanPage() {
                         )}
                     </div>
                     <button
-                        onClick={() => setViewDay(Math.min(STUDY_PLAN_TOTAL_DAYS, viewDay + 1))}
-                        disabled={viewDay === STUDY_PLAN_TOTAL_DAYS}
+                        onClick={() => setViewDay(Math.min(totalPlanDays, viewDay + 1))}
+                        disabled={viewDay === totalPlanDays}
                         className="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-md disabled:opacity-30 transition-shadow hover:shadow-sm"
                     >
                         <ChevronRight className="w-5 h-5 text-slate-600 dark:text-slate-400" />
@@ -260,6 +262,9 @@ export default function StudyPlanPage() {
                                     'P2': { label: 'PYQ Session 2', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' },
                                     'M':  { label: 'Eng. Math', color: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300' },
                                     'R':  { label: 'Reflection', color: 'bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-300' },
+                                    'MATH': { label: 'Math Dawn · 05:15', color: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300' },
+                                    'TECH': { label: 'Technical Dawn · 06:55', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' },
+                                    'EVE':  { label: 'Evening Burn · 19:00', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' },
                                 };
                                 const meta = sessionTypeLabels[row.sourceSessionId] || { label: row.sourceSessionId, color: 'bg-slate-100 text-slate-600' };
 
@@ -341,6 +346,36 @@ export default function StudyPlanPage() {
                             })}
                         </div>
                     </Card>
+
+                    {/* Weekly Mission & Success Metrics (custom weekly plans) */}
+                    {(dayPlan.weekMission || dayPlan.weekMetrics?.length > 0) && (
+                        <Card className="border-l-4 border-l-brand-500">
+                            <div className="flex items-center gap-3 mb-3">
+                                <Trophy className="w-5 h-5 text-brand-600 dark:text-brand-400" />
+                                <h3 className="font-bold text-slate-900 dark:text-white text-sm">
+                                    Week {dayPlan.week} · Weekend Mission & Success Metrics
+                                </h3>
+                            </div>
+                            {dayPlan.weekMission && (
+                                <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
+                                    {dayPlan.weekMission}
+                                </p>
+                            )}
+                            {dayPlan.weekMetrics?.length > 0 && (
+                                <div className="space-y-2">
+                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                                        Week passes only if:
+                                    </p>
+                                    {dayPlan.weekMetrics.map((metric, i) => (
+                                        <div key={i} className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300">
+                                            <CheckCircle2 className="w-4 h-4 mt-0.5 text-brand-500 flex-shrink-0" />
+                                            <span>{metric}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </Card>
+                    )}
 
                     {/* Backlog Distribution Summary */}
                     {backlogSummary && backlogSummary.backlogTotal > 0 && viewDay === currentDay && (

@@ -6,11 +6,13 @@ import Button from '../UI/Button';
 import { LogIn, Github, Mail, Lock, Sparkles, Brain, Code2, Target } from 'lucide-react';
 
 export default function LoginPage() {
-    const { signInWithGoogle, session } = useAppStore();
+    const { signInWithGoogle, signInWithPassword, session } = useAppStore();
     const navigate = useNavigate();
     const [isLoading, setIsLoading] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [formError, setFormError] = useState(null);
+    const [isSigningIn, setIsSigningIn] = useState(false);
 
     // Immediate redirect if session exists
     useEffect(() => {
@@ -32,6 +34,24 @@ export default function LoginPage() {
             alert('Failed to sign in with Google. Check console for details.');
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handlePasswordLogin = async (e) => {
+        e.preventDefault();
+        setFormError(null);
+        if (!email || !password) {
+            setFormError('Please enter both email and password.');
+            return;
+        }
+        setIsSigningIn(true);
+        try {
+            await signInWithPassword(email, password);
+            navigate('/', { replace: true });
+        } catch (error) {
+            setFormError(error.message || 'Sign in failed. Please try again.');
+        } finally {
+            setIsSigningIn(false);
         }
     };
 
@@ -84,8 +104,8 @@ export default function LoginPage() {
                             <div className="w-full h-px bg-slate-200 dark:bg-slate-800"></div>
                         </div>
 
-                        {/* Traditional Login (MOCK for now) */}
-                        <div className="space-y-4">
+                        {/* Traditional Login (local seeded accounts) */}
+                        <form className="space-y-4" onSubmit={handlePasswordLogin}>
                             <div className="space-y-1.5">
                                 <label className="text-xs font-bold text-slate-500 uppercase tracking-widest pl-1">Email</label>
                                 <div className="relative group">
@@ -112,13 +132,22 @@ export default function LoginPage() {
                                     />
                                 </div>
                             </div>
+                            {formError && (
+                                <p className="text-xs font-semibold text-red-500 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/40 rounded-lg px-3 py-2">
+                                    {formError}
+                                </p>
+                            )}
                             <div className="flex justify-end">
-                                <button className="text-xs font-semibold text-brand-600 hover:text-brand-700 transition-colors">Forgot password?</button>
+                                <button type="button" className="text-xs font-semibold text-brand-600 hover:text-brand-700 transition-colors">Forgot password?</button>
                             </div>
-                            <Button className="w-full h-12 rounded-xl font-bold text-base shadow-xl shadow-brand-500/20 active:scale-[0.98]">
-                                Sign In
+                            <Button
+                                type="submit"
+                                disabled={isSigningIn}
+                                className="w-full h-12 rounded-xl font-bold text-base shadow-xl shadow-brand-500/20 active:scale-[0.98] disabled:opacity-60 disabled:cursor-wait"
+                            >
+                                {isSigningIn ? 'Signing In...' : 'Sign In'}
                             </Button>
-                        </div>
+                        </form>
                     </div>
 
                     {/* Features List */}

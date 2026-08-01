@@ -102,9 +102,10 @@ function App() {
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
             const currentState = useAppStore.getState();
             const isGuest = currentState.session?.isGuest || currentState.session?.user?.email === 'guest@gatemaster.ai';
-            
-            if (!session && isGuest) {
-                // Keep guest session, ignore null from Supabase
+            const isLocal = currentState.session?.isLocal;
+
+            if (!session && (isGuest || isLocal)) {
+                // Keep guest/local session, ignore null from Supabase
             } else {
                 useAppStore.getState().setAuth(session);
             }
@@ -112,11 +113,11 @@ function App() {
             const metaStart = state.session?.user?.user_metadata?.plan_start_date;
             if (metaStart && !state.planStartDate) {
                 state.setPlanStartDate(metaStart);
-            } else if (state.planStartDate && metaStart !== state.planStartDate && state.session && !state.session.isGuest) {
+            } else if (state.planStartDate && metaStart !== state.planStartDate && state.session && !state.session.isGuest && !state.session.isLocal) {
                 await supabase.auth.updateUser({ data: { plan_start_date: state.planStartDate } });
             }
 
-            if (_event === 'SIGNED_IN' || _event === 'TOKEN_REFRESHED' || isGuest) {
+            if (_event === 'SIGNED_IN' || _event === 'TOKEN_REFRESHED' || isGuest || isLocal) {
                 void load();
             }
         });
@@ -125,9 +126,10 @@ function App() {
         supabase.auth.getSession().then(async ({ data: { session } }) => {
             const currentState = useAppStore.getState();
             const isGuest = currentState.session?.isGuest || currentState.session?.user?.email === 'guest@gatemaster.ai';
+            const isLocal = currentState.session?.isLocal;
 
-            if (!session && isGuest) {
-                // Keep guest session, ignore null from Supabase
+            if (!session && (isGuest || isLocal)) {
+                // Keep guest/local session, ignore null from Supabase
                 useAppStore.getState().setAuthLoading(false);
             } else {
                 useAppStore.getState().setAuth(session);
@@ -136,7 +138,7 @@ function App() {
             const metaStart = state.session?.user?.user_metadata?.plan_start_date;
             if (metaStart && !state.planStartDate) {
                 state.setPlanStartDate(metaStart);
-            } else if (state.planStartDate && metaStart !== state.planStartDate && state.session && !state.session.isGuest) {
+            } else if (state.planStartDate && metaStart !== state.planStartDate && state.session && !state.session.isGuest && !state.session.isLocal) {
                 await supabase.auth.updateUser({ data: { plan_start_date: state.planStartDate } });
             }
             

@@ -7,8 +7,7 @@ import Badge from '../UI/Badge';
 import { aiCoach } from '../../ai/aiCoach';
 import { adaptiveEngine } from '../../ai/adaptiveEngine';
 import { taskSuggester } from '../../ai/taskSuggester';
-import { STUDY_PLAN_TOTAL_DAYS } from '../../data/studyPlan';
-import { useMasterStudyPlan } from '../../hooks/useMasterStudyPlan';
+import { useMasterStudyPlan, usePlanTotalDays } from '../../hooks/useMasterStudyPlan';
 import { useGateExamDates } from '../../hooks/useGateExamDates';
 import { getDaysLeftLabel } from '../../utils/gateExamDates';
 import { getEffectiveToday } from '../../utils/dayBoundary';
@@ -27,6 +26,8 @@ export default function ProgressDashboard() {
     const {
         currentDay,
         planStartDate,
+        activePlanId,
+        user,
         tasks,
         pyqAttempts,
         sessions,
@@ -39,7 +40,16 @@ export default function ProgressDashboard() {
     } = useAppStore();
 
     const studyPlan = useMasterStudyPlan();
+    const totalPlanDays = usePlanTotalDays();
     const dayPlan = useMemo(() => studyPlan.find(d => d.day === currentDay) || studyPlan[0], [studyPlan, currentDay]);
+
+    // Custom plans (e.g. Ishika's weekly battle plan) drive the AI coach off
+    // the plan's own phases instead of the built-in 311-day phase model.
+    const planContext = useMemo(() => (
+        activePlanId
+            ? { totalDays: totalPlanDays, phase: dayPlan?.phase, phaseSubtitle: dayPlan?.phaseSubtitle }
+            : null
+    ), [activePlanId, totalPlanDays, dayPlan]);
 
     const allIds = useMemo(() => getAllSyllabusIds(), []);
     const totalSyllabusTopics = allIds.length;
@@ -63,8 +73,8 @@ export default function ProgressDashboard() {
         tasks
     );
 
-    const recommendation = aiCoach.getDailyRecommendation(currentDay, {}, tasks, planStartDate);
-    const strategicAdvice = aiCoach.getStrategicAdvice(currentDay, planStartDate);
+    const recommendation = aiCoach.getDailyRecommendation(currentDay, {}, tasks, planStartDate, planContext);
+    const strategicAdvice = aiCoach.getStrategicAdvice(currentDay, planStartDate, planContext);
     const weakAreas = adaptiveEngine.identifyWeakAreas(pyqAttempts, {});
 
     // Get AI suggested tasks (max 3)
@@ -82,7 +92,11 @@ export default function ProgressDashboard() {
 
                         <div className="relative z-10 p-2 flex flex-col h-full justify-between">
                             <div>
-                                <h2 className="text-2xl font-bold mb-1">Ready to crush GATE? 🚀</h2>
+                                <h2 className="text-2xl font-bold mb-1">
+                                    {user?.user_metadata?.full_name
+                                        ? `Ready to crush GATE, ${user.user_metadata.full_name.split(' ')[0]}? 🚀`
+                                        : 'Ready to crush GATE? 🚀'}
+                                </h2>
                                 <p className="text-brand-100 mb-6 max-w-lg">
                                     {dailyTip}
                                 </p>
@@ -101,7 +115,7 @@ export default function ProgressDashboard() {
                                 <div>
                                     <div className="text-brand-200 text-xs sm:text-sm font-medium mb-1 uppercase tracking-wider">Day</div>
                                     <div className="text-2xl sm:text-3xl font-mono font-bold">
-                                        {currentDay}<span className="text-brand-300 text-sm sm:text-lg">/{STUDY_PLAN_TOTAL_DAYS}</span>
+                                        {currentDay}<span className="text-brand-300 text-sm sm:text-lg">/{totalPlanDays}</span>
                                     </div>
                                     <div className="text-brand-300 text-[10px] sm:text-xs mt-1 font-medium bg-brand-900/40 px-2 py-0.5 rounded-full w-fit">
                                         {getEffectiveToday().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
@@ -361,15 +375,15 @@ export default function ProgressDashboard() {
             </div>
 
             {/* E. Schedule Projection Chart */}
-            <ScheduleProjectionChart 
+            <ScheduleProjectionChart
                 currentDay={currentDay}
                 planProgress={planProgress}
-                totalDays={STUDY_PLAN_TOTAL_DAYS}
+                totalDays={totalPlanDays}
             />
 
             {/* C. Overall Syllabus Heatmap */}
-            <SyllabusHeatmap 
-                totalDays={STUDY_PLAN_TOTAL_DAYS}
+            <SyllabusHeatmap
+                totalDays={totalPlanDays}
                 currentDay={currentDay}
                 planProgress={planProgress}
             />

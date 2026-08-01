@@ -61,6 +61,25 @@ npm run dev
 http://localhost:5173
 ```
 
+## 👤 Seeded Account — Ishika Bhatnagar
+
+A local email/password account ships pre-seeded (works with or without Supabase configured):
+
+| | |
+|---|---|
+| **Email** | `ishika.bhatnagar@geti.education` |
+| **Password** | `IshikaGATE@2027` |
+
+Signing in with this account activates Ishika's personal **28-week GATE CSE + DA 2027 Weekly Battle Plan** (Jul 27, 2026 » Feb 6, 2027 — 195 days), imported from her weekly plan PDFs:
+
+- **Fixed daily frame**: 05:15–06:45 Math dawn · 06:55–09:30 Technical dawn · 19:00–20:45 Evening burn.
+- **5 phases**: Shared Core (W1–8) » Branch/CSE exclusives (W9–16) » Revision Cycle 1 (W17–20) » Mock Marathon (W21–26) » Taper + Exam (W27–28).
+- **Weekend Missions & Success Metrics** for each week surface directly on the planner.
+- **AI catch-up**: any plan days that have already elapsed unfinished are detected automatically and their sessions are redistributed across upcoming days by the intelligent backlog engine — nothing is silently dropped.
+- All AI planning features (readiness score, daily coach, weak-area detection, Gemini schedule overrides) run on this plan exactly as they do on the default roadmap.
+
+Sign in on the login page using the email/password form (no Google account needed).
+
 ## 🛠️ Project Stack
 
 - **Frontend Core**: React 18 / Vite

@@ -12,7 +12,9 @@ export async function generateDailySchedule({
   targetDate,
   availableHours,
   weakAreas,
-  daysToExam
+  daysToExam,
+  rankedWeakSubjects = [],
+  focusLabel = 'High',
 }) {
   const apiKey = getGeminiKey();
   if (!apiKey) {
@@ -20,21 +22,39 @@ export async function generateDailySchedule({
     return fallbackSchedule(targetDate, availableHours);
   }
 
+  // Highest-priority weak subjects first, with the reason they're weak.
+  const rankedWeakText = rankedWeakSubjects.length
+    ? rankedWeakSubjects
+        .map((s, i) => `${i + 1}. ${s.name}${s.reasons?.length ? ` (${s.reasons.join('; ')})` : ''}`)
+        .join("\n")
+    : "None recorded yet";
+
+  // How aggressively to bias the day toward weak areas.
+  const focusDirective = {
+    Balanced: 'Keep a balanced mix, but give weak areas a slight edge.',
+    High: 'Weak areas should take the MAJORITY of today’s time; completed topics get only brief spaced revision.',
+    Aggressive: 'Weak areas are the near-exclusive focus today. Touch completed/strong topics only for a quick warm-up, if at all.',
+  }[focusLabel] || 'Weak areas should take the majority of today’s time.';
+
   const prompt = `
-You are a GATE exam preparation expert. Generate a detailed, optimized study schedule.
+You are a GATE exam preparation expert. Generate a detailed, optimized study schedule
+that PRIORITIZES the student's weak areas over topics they have already completed.
 
 Context:
 - Target date: ${targetDate}
 - Available study hours today: ${availableHours}
 - Days remaining to GATE exam: ${daysToExam}
-- Completed topics so far: ${completedTopics.join(", ")}
-- Weak areas needing revision: ${weakAreas.join(", ")}
+- Personalisation focus: ${focusLabel} — ${focusDirective}
+- Weak subjects, ranked by priority (highest first):
+${rankedWeakText}
+- Additional weak topics (low PYQ accuracy): ${weakAreas.length ? weakAreas.join(", ") : "None recorded yet"}
+- Already-completed topics (DEPRIORITIZE — light spaced revision only): ${completedTopics.length ? completedTopics.join(", ") : "None yet"}
 - Subjects with remaining topics: ${allSubjects.map(s => s.name).join(", ")}
 
 Generate a pure JSON schedule with this EXACT structure (NO markdown formatting, just parseable JSON):
 {
   "date": "${targetDate}",
-  "optimizationNote": "Brief explanation of today's strategy based on weak areas and progress.",
+  "optimizationNote": "Brief explanation of today's strategy, explicitly naming which weak areas you prioritized and why.",
   "sessions": [
     {
       "id": "unique-session-id",
@@ -42,7 +62,7 @@ Generate a pure JSON schedule with this EXACT structure (NO markdown formatting,
       "topicId": "...",
       "topicName": "...",
       "duration": 90,
-      "type": "concept", 
+      "type": "concept",
       "completed": false,
       "pyqsToSolve": 10,
       "resources": ["NPTEL link or standard book chapter"]
@@ -53,9 +73,10 @@ Generate a pure JSON schedule with this EXACT structure (NO markdown formatting,
 
 Rules:
 - Valid session \`type\` are: "concept", "practice", "pyq_revision", "mock_test"
-- Prioritize incomplete topics that are important.
-- Include PYQ revision for topics marked as "weak areas".
-- Balance subjects — don't repeat the same subject fully back-to-back.
+- Allocate the FIRST and LARGEST blocks to the highest-ranked weak subjects above.
+- Include heavy PYQ revision for weak areas; completed topics get at most one short spaced-revision block.
+- Respect the personalisation focus directive above when deciding the weak-vs-completed time split.
+- Balance across the weak subjects — don't spend the whole day on a single subject unless only one is weak.
 - Return ONLY valid JSON, no markdown tags like \`\`\`json.
 `;
 

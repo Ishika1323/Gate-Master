@@ -12,21 +12,41 @@
  *   R   — Daily Reflection & Mistake Logging (30 min)
  */
 
+import { differenceInCalendarDays } from 'date-fns';
 import {
     addPlanDays,
-    buildCatchupQueue,
-    buildWaveDaySessions,
-    calendarMonthOf,
-    getMissedWaveMonths,
-    isTestSeriesPhase,
     monthName,
-    WAVE_MONTHS,
+    parsePlanStart,
 } from './calendarCurriculum';
 import { getMathAlternatingTopic } from './detailedCurriculum';
+import {
+    buildDeepDivePrimarySequence,
+    getDeepDiveDays,
+    nextSubtopic,
+    pickSecondarySubject,
+} from './planScheduler';
 import { TEST_SERIES } from './testSeries';
+import { getExamDateForPlan } from '../utils/gateExamDates';
 
+// Fallback length only — the real plan length is computed from the start date to
+// the actual GATE exam date (see getPlanTotalDays).
 export const STUDY_PLAN_TOTAL_DAYS = 311;
 export const STUDY_PLAN_EXAM_DAY = STUDY_PLAN_TOTAL_DAYS;
+
+/**
+ * Number of plan days from the start date up to and including the GATE exam
+ * date, so the plan spans exactly start → exam (Day N = exam day). Falls back
+ * to the fixed length if the exam date can't be resolved sensibly.
+ * @param {string} planStartISO - YYYY-MM-DD
+ */
+export function getPlanTotalDays(planStartISO) {
+    const startISO = planStartISO || defaultPlanStart();
+    const start = parsePlanStart(startISO);
+    const exam = getExamDateForPlan(startISO);
+    const total = differenceInCalendarDays(exam, start) + 1;
+    if (!Number.isFinite(total) || total < 7) return STUDY_PLAN_TOTAL_DAYS;
+    return total;
+}
 
 export function planDateKey(planStartISO, dayIndex0) {
     return addPlanDays(planStartISO, dayIndex0).toISOString().split('T')[0];
@@ -34,85 +54,91 @@ export function planDateKey(planStartISO, dayIndex0) {
 
 /** @param {string} planStartISO - YYYY-MM-DD */
 export function getStudyPlanPhase(day, planStartISO) {
-    const start = planStartISO || new Date().toISOString().split('T')[0];
-    if (day >= STUDY_PLAN_EXAM_DAY) {
+    const start = planStartISO || defaultPlanStart();
+    const total = getPlanTotalDays(start);
+    if (day >= total) {
         return {
             key: 'exam',
             title: 'GATE Exam Day',
             subtitle: 'Final execution: stay calm, strategic time management',
         };
     }
-    const date = addPlanDays(start, day - 1);
-    const cm = calendarMonthOf(date);
-    if (isTestSeriesPhase(date)) {
-        const missed = getMissedWaveMonths(start);
-        return {
-            key: 'testseries',
-            title: `Test Season · ${monthName(cm)}`,
-            subtitle:
-                missed.length > 0
-                    ? `Timed mocks + Catch-up for: ${missed.map(monthName).join(', ')}`
-                    : 'Systematic Mock Tests & performance profiling',
-        };
-    }
-    if (WAVE_MONTHS.includes(cm)) {
+    const deepDiveDays = getDeepDiveDays(total);
+    if (day <= deepDiveDays) {
         return {
             key: 'wave',
-            title: `${monthName(cm)} · Core Curriculum`,
-            subtitle: 'Intensive monthly subject deep-dives',
+            title: 'Core Curriculum · Deep Dive',
+            subtitle: 'Full-syllabus subject deep-dives, weighted by exam marks',
+        };
+    }
+    // Test-series + revision tail, with the last ~2 weeks reserved for final revision.
+    if (total - day <= 14) {
+        return {
+            key: 'testseries',
+            title: 'Final Revision & Mocks',
+            subtitle: 'Full-length mocks + rapid revision — no new theory',
         };
     }
     return {
-        key: 'ramp',
-        title: 'Foundation Ramp-up',
-        subtitle: 'Building core habits: Math, Aptitude & Problem Solving',
+        key: 'testseries',
+        title: 'Test Series & Revision',
+        subtitle: 'Timed mock tests + full-syllabus revision & error analysis',
     };
 }
 
-function bridgeRampSessions(day) {
-    const mathTopic = getMathAlternatingTopic(day);
+/**
+ * A single deep-dive day: primary + secondary subject lectures & PYQ drills
+ * (drawn from the weighted window schedule), plus daily Eng. Math and reflection.
+ */
+function buildDeepDiveDay(dayInPhase, planDayNumber, primarySeq, counters) {
+    const primary = primarySeq[dayInPhase - 1];
+    const secondary = pickSecondarySubject(dayInPhase, primary);
+    const pri = nextSubtopic(primary, counters);
+    const sec = nextSubtopic(secondary, counters);
+    const mathTopic = getMathAlternatingTopic(planDayNumber);
+
     return [
         {
             id: 'L1',
             duration: 120,
-            subject: 'ds',
+            subject: primary,
             topics: [
-                'Data Structures Foundation: Arrays, Linked Lists & Complexity',
-                '📖 Big-O analysis of standard operations',
-                '📝 Create template notes for DS patterns',
+                pri.subtopic,
+                '📖 Deep theory, derivations & worked examples',
+                '📝 Create concise short notes for revision',
             ],
             type: 'study',
         },
         {
             id: 'L2',
             duration: 120,
-            subject: 'math',
+            subject: secondary,
             topics: [
-                'Discrete Math Foundations: Set Theory & Logic Basics',
-                '📖 Proof techniques: Direct, Contradiction, Induction',
-                '📝 Key definitions & theorem list',
+                sec.subtopic,
+                '📖 Concept building & standard problem patterns',
+                '📝 Formula sheet & key theorem notes',
             ],
             type: 'study',
         },
         {
             id: 'P1',
             duration: 120,
-            subject: 'ds',
+            subject: primary,
             topics: [
-                'PYQ Practice: Stack & Queue Implementations',
-                '⏱️ Timed drill — 25 GATE PYQs',
-                '📊 Mistake log & pattern identification',
+                `PYQ Practice: ${pri.subtopic.split(':')[0]}`,
+                '⏱️ Timed drill — 25 GATE PYQs (strict 2h limit)',
+                '📊 Log accuracy, identify weak patterns',
             ],
             type: 'pyq',
         },
         {
             id: 'P2',
             duration: 120,
-            subject: 'math',
+            subject: secondary,
             topics: [
-                'PYQ Practice: Discrete Mathematics Basics',
-                '⏱️ Timed drill — 25 GATE PYQs',
-                '📊 Error tagging & accuracy tracking',
+                `PYQ Practice: ${sec.subtopic.split(':')[0]}`,
+                '⏱️ Timed drill — 25 GATE PYQs (strict 2h limit)',
+                '📊 Error tagging & mistake notebook entry',
             ],
             type: 'pyq',
         },
@@ -264,48 +290,40 @@ function buildTestSeriesMain(ctx, day) {
  * Build full plan from canonical start date (store planStartDate).
  */
 export function buildStudyPlan(planStartISO) {
-    const start = planStartISO || new Date().toISOString().split('T')[0];
-    const catchupQueue = buildCatchupQueue(start);
+    const start = planStartISO || defaultPlanStart();
+    const totalDays = getPlanTotalDays(start);
+    const examDay = totalDays;
+    const deepDiveDays = getDeepDiveDays(totalDays);
+
+    // Weighted deep-dive primary schedule covering ALL subjects across the window.
+    const primarySeq = buildDeepDivePrimarySequence(deepDiveDays);
+    const counters = {}; // per-subject subtopic progress
     const ctx = {
-        catchupQueue,
+        catchupQueue: [], // full syllabus is covered in the deep-dive phase now
         catchIdx: { i: 0 },
         testIdx: { i: 0 },
     };
 
     const days = [];
-    for (let day = 1; day <= STUDY_PLAN_TOTAL_DAYS; day++) {
-        const date = addPlanDays(start, day - 1);
+    for (let day = 1; day <= totalDays; day++) {
         const dateString = planDateKey(start, day - 1);
         const phase = getStudyPlanPhase(day, start);
 
-        if (day === STUDY_PLAN_EXAM_DAY) {
-            days.push({
-                day,
-                date: dateString,
-                phase: phase.title,
-                phaseSubtitle: phase.subtitle,
-                sessions: [
-                    {
-                        id: 'L1',
-                        duration: 180,
-                        subject: 'all',
-                        topics: ['GATE Exam: Strategic execution, report early, keep mindset positive'],
-                        type: 'exam',
-                    },
-                ],
-            });
-            continue;
-        }
-
         let sessions;
-        const cm = calendarMonthOf(date);
-
-        if (isTestSeriesPhase(date)) {
-            sessions = buildTestSeriesMain(ctx, day);
-        } else if (WAVE_MONTHS.includes(cm)) {
-            sessions = buildWaveDaySessions(cm, day, start);
+        if (day === examDay) {
+            sessions = [
+                {
+                    id: 'L1',
+                    duration: 180,
+                    subject: 'all',
+                    topics: ['GATE Exam: Strategic execution, report early, keep mindset positive'],
+                    type: 'exam',
+                },
+            ];
+        } else if (day <= deepDiveDays) {
+            sessions = buildDeepDiveDay(day, day, primarySeq, counters);
         } else {
-            sessions = bridgeRampSessions(day);
+            sessions = buildTestSeriesMain(ctx, day);
         }
 
         days.push({
@@ -313,7 +331,7 @@ export function buildStudyPlan(planStartISO) {
             date: dateString,
             phase: phase.title,
             phaseSubtitle: phase.subtitle,
-            sessions: sessions || bridgeRampSessions(day),
+            sessions,
         });
     }
 
@@ -321,7 +339,10 @@ export function buildStudyPlan(planStartISO) {
 }
 
 export function defaultPlanStart() {
-    return '2026-07-15';
+    // Anchor the plan to "today" (local time) so Day 1 is the day the user
+    // first opens the app, rather than a frozen hardcoded date that rots over time.
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 /** Fallback for code paths that do not yet read planStartDate */

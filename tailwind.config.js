@@ -8,18 +8,18 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Primary brand colors - Clean & Professional
+        // Primary brand colors - Terminal × Ascent violet (deck signature)
         brand: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
-          800: '#1e40af',
-          900: '#1e3a8a',
+          50: '#f1eeff',
+          100: '#e4ddff',
+          200: '#cabaff',
+          300: '#ab92ff',
+          400: '#9274ff',
+          500: '#7c5cff',
+          600: '#6d4dfa',
+          700: '#5b3ce8',
+          800: '#4a31bd',
+          900: '#2e2170',
         },
         // Accent colors
         accent: {
@@ -28,6 +28,26 @@ export default {
           emerald: { light: '#6ee7b7', DEFAULT: '#10b981', dark: '#059669' },
           amber: { light: '#fcd34d', DEFAULT: '#f59e0b', dark: '#d97706' },
           rose: { light: '#fda4af', DEFAULT: '#f43f5e', dark: '#e11d48' },
+        },
+        // Terminal × Ascent neon command-deck palette
+        deck: {
+          bg: '#05070c',
+          bg2: '#070b12',
+          panel: '#0a0f18',
+          panel2: '#0b1120',
+          line: '#141c2b',
+          line2: '#1b2536',
+          ink: '#cdd7e6',
+          inkb: '#eafff9',
+          muted: '#56617a',
+          muted2: '#7f8ba3',
+          cyan: '#35e0d0',
+          green: '#37d399',
+          violet: '#7c5cff',
+          magenta: '#ff4f9e',
+          gold: '#ffd76a',
+          warn: '#f5b64e',
+          bad: '#ff6b7a',
         },
         // Subject colors - Muted professional tones
         subject: {

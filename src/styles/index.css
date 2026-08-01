@@ -30,28 +30,40 @@
 }
 
 .dark {
-  /* Dark theme - Deep navy with blue accents */
-  --bg-primary: #0f172a;
-  --bg-secondary: #1e293b;
-  --bg-tertiary: #334155;
-  --bg-elevated: #1e293b;
+  /* Dark theme - Terminal × Ascent near-black neon command deck */
+  --bg-primary: #05070c;
+  --bg-secondary: #070b12;
+  --bg-tertiary: #141c2b;
+  --bg-elevated: #0a0f18;
 
-  --text-primary: #f1f5f9;
-  --text-secondary: #cbd5e1;
-  --text-tertiary: #64748b;
+  --text-primary: #eafff9;
+  --text-secondary: #cdd7e6;
+  --text-tertiary: #7f8ba3;
 
-  --border-light: #334155;
-  --border-DEFAULT: #475569;
-  --border-strong: #64748b;
+  --border-light: #141c2b;
+  --border-DEFAULT: #1b2536;
+  --border-strong: #2a3550;
 
-  --brand-600: #3b82f6;
-  --brand-700: #2563eb;
+  --brand-600: #7c5cff;
+  --brand-700: #6a4cf0;
 
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
-  --shadow: 0 2px 4px 0 rgb(0 0 0 / 0.3), 0 1px 2px 0 rgb(0 0 0 / 0.3);
-  --shadow-md: 0 6px 10px -1px rgb(0 0 0 / 0.3), 0 2px 4px -1px rgb(0 0 0 / 0.3);
-  --shadow-lg: 0 15px 25px -3px rgb(0 0 0 / 0.3), 0 6px 10px -2px rgb(0 0 0 / 0.3);
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.45);
+  --shadow: 0 2px 4px 0 rgb(0 0 0 / 0.45), 0 1px 2px 0 rgb(0 0 0 / 0.45);
+  --shadow-md: 0 6px 12px -1px rgb(0 0 0 / 0.5), 0 2px 4px -1px rgb(0 0 0 / 0.45);
+  --shadow-lg: 0 16px 28px -3px rgb(0 0 0 / 0.55), 0 6px 10px -2px rgb(0 0 0 / 0.5);
 }
+
+/* Panels/cards on the deck read as gradient neon-line surfaces. */
+.dark .card,
+.dark .stat-card {
+  background: linear-gradient(180deg, var(--deck-panel), var(--deck-panel2));
+}
+.dark .card:hover { border-color: rgba(124, 92, 255, .28); }
+.dark .stat-value { color: var(--deck-cyan); }
+.dark .badge-primary { background: rgba(124, 92, 255, .15); color: #c3b1ff; }
+.dark .badge-success { background: rgba(55, 211, 153, .15); color: var(--deck-green); }
+.dark .badge-warning { background: rgba(245, 182, 78, .15); color: var(--deck-warn); }
+.dark .badge-danger { background: rgba(255, 107, 122, .15); color: var(--deck-bad); }
 
 * {
   margin: 0;
@@ -331,4 +343,207 @@ body {
 *:focus-visible {
   outline: 2px solid var(--brand-600);
   outline-offset: 2px;
+}
+
+/* ============================================================
+   TERMINAL × ASCENT — dark neon command-deck theme layer
+   A keyboard-first monospace power deck fused with gamified
+   rank-quest / XP / streak energy. Committed dark surfaces.
+   ============================================================ */
+:root {
+  --deck-bg: #05070c;
+  --deck-bg2: #070b12;
+  --deck-panel: #0a0f18;
+  --deck-panel2: #0b1120;
+  --deck-line: #141c2b;
+  --deck-line2: #1b2536;
+  --deck-ink: #cdd7e6;
+  --deck-ink-b: #eafff9;
+  --deck-muted: #56617a;
+  --deck-muted2: #7f8ba3;
+  --deck-cyan: #35e0d0;
+  --deck-green: #37d399;
+  --deck-violet: #7c5cff;
+  --deck-magenta: #ff4f9e;
+  --deck-gold: #ffd76a;
+  --deck-warn: #f5b64e;
+  --deck-bad: #ff6b7a;
+  --deck-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+}
+
+/* The deck shell paints the near-black neon backdrop behind every page so
+   the sidebar + Command Deck read as one cohesive terminal world. */
+.deck-shell {
+  background:
+    radial-gradient(900px 420px at 78% -8%, rgba(124, 92, 255, .16), transparent 60%),
+    radial-gradient(700px 360px at 8% 108%, rgba(53, 224, 208, .10), transparent 55%),
+    var(--deck-bg);
+  color: var(--deck-ink);
+  font-family: var(--deck-mono);
+}
+
+.deck-tnum { font-variant-numeric: tabular-nums; }
+.deck-mono { font-family: var(--deck-mono); }
+
+/* ---------- sidebar ---------- */
+.deck-side {
+  border-right: 1px solid var(--deck-line);
+  background: var(--deck-bg2);
+}
+.deck-logo {
+  background: linear-gradient(135deg, var(--deck-violet), var(--deck-magenta));
+}
+.deck-navlink {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 9px;
+  font-size: 12.5px;
+  color: var(--deck-muted2);
+  border: 1px solid transparent;
+  transition: all .15s ease;
+}
+.deck-navlink:hover {
+  color: var(--deck-ink-b);
+  background: rgba(124, 92, 255, .06);
+}
+.deck-navlink .deck-ic { width: 16px; text-align: center; color: var(--deck-cyan); }
+.deck-navlink .deck-kbd {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--deck-muted);
+  border: 1px solid var(--deck-line2);
+  border-radius: 4px;
+  padding: 0 5px;
+}
+.deck-navlink.on {
+  background: linear-gradient(90deg, rgba(124, 92, 255, .16), rgba(124, 92, 255, .03));
+  color: var(--deck-ink-b);
+  border: 1px solid rgba(124, 92, 255, .28);
+}
+.deck-navlink.on .deck-kbd { color: var(--deck-ink-b); }
+
+/* ---------- panels ---------- */
+.deck-panel {
+  border: 1px solid var(--deck-line);
+  background: linear-gradient(180deg, var(--deck-panel), var(--deck-panel2));
+  border-radius: 14px;
+  padding: 16px;
+  position: relative;
+  overflow: hidden;
+}
+.deck-lbl {
+  font-size: 10.5px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--deck-muted);
+}
+.deck-lbl .b { color: var(--deck-cyan); }
+
+/* ---------- terminal topbar ---------- */
+.deck-topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--deck-line);
+  background: var(--deck-panel);
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+.deck-dots { display: flex; gap: 6px; margin-right: 4px; }
+.deck-dots i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.deck-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--deck-line2);
+  background: var(--deck-panel2);
+  border-radius: 999px;
+  padding: 4px 10px;
+  color: var(--deck-ink);
+  font-size: 11.5px;
+}
+.deck-pill.flame { color: var(--deck-gold); border-color: rgba(255, 215, 106, .3); }
+.deck-pill.xp { color: var(--deck-cyan); border-color: rgba(53, 224, 208, .3); }
+
+/* ---------- rank quest hero ---------- */
+.deck-quest {
+  background:
+    radial-gradient(420px 200px at 90% -20%, rgba(255, 79, 158, .18), transparent 60%),
+    radial-gradient(360px 200px at -5% 120%, rgba(124, 92, 255, .20), transparent 60%),
+    linear-gradient(180deg, var(--deck-panel), var(--deck-panel2));
+}
+.deck-rankbig {
+  font-family: system-ui, sans-serif;
+  font-size: 56px;
+  font-weight: 850;
+  letter-spacing: -.03em;
+  line-height: .9;
+  background: linear-gradient(92deg, #b79bff, #ff7ac0 60%, #ffd76a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.deck-target { font-family: system-ui, sans-serif; font-size: 26px; font-weight: 800; color: var(--deck-gold); }
+.deck-progress { height: 9px; border-radius: 6px; background: rgba(140, 150, 170, .16); overflow: hidden; margin-top: 14px; }
+.deck-progress i { display: block; height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--deck-violet), var(--deck-magenta)); }
+
+/* ---------- readiness ring + xp ---------- */
+.deck-khero { font-family: system-ui, sans-serif; font-size: 30px; font-weight: 820; color: var(--deck-ink-b); letter-spacing: -.02em; }
+.deck-khero small { font-size: 12px; color: var(--deck-muted2); font-family: var(--deck-mono); font-weight: 400; }
+.deck-badge {
+  font-size: 10.5px;
+  border: 1px solid var(--deck-line2);
+  background: var(--deck-panel2);
+  border-radius: 999px;
+  padding: 5px 9px;
+  color: var(--deck-ink);
+}
+.deck-badge.g { color: var(--deck-green); border-color: rgba(55, 211, 153, .3); }
+.deck-badge.v { color: #c3b1ff; border-color: rgba(124, 92, 255, .35); }
+
+/* ---------- subject accuracy meters ---------- */
+.deck-meter { display: grid; grid-template-columns: 116px 1fr 42px; align-items: center; gap: 10px; font-size: 12px; }
+.deck-meter .nm { color: var(--deck-muted2); display: flex; align-items: center; }
+.deck-track { height: 8px; border-radius: 5px; background: rgba(140, 150, 170, .14); overflow: hidden; }
+.deck-track i { display: block; height: 100%; border-radius: 5px; }
+.deck-boss { font-size: 9.5px; color: var(--deck-magenta); border: 1px solid rgba(255, 79, 158, .35); border-radius: 999px; padding: 1px 7px; margin-left: 6px; }
+
+/* ---------- consistency heatmap ---------- */
+.deck-heat { display: grid; grid-template-columns: repeat(26, 1fr); gap: 3px; margin-top: 12px; }
+.deck-heat i { aspect-ratio: 1; border-radius: 2px; }
+.deck-legendh { display: flex; align-items: center; gap: 7px; font-size: 10.5px; color: var(--deck-muted); margin-top: 10px; }
+.deck-legendh i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+
+/* ---------- missions ---------- */
+.deck-mrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  border: 1px solid var(--deck-line);
+  background: var(--deck-panel2);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.deck-mrow.pri { border-color: rgba(255, 107, 122, .3); }
+.deck-mrow .tag { font-size: 9.5px; text-transform: uppercase; letter-spacing: .08em; padding: 2px 7px; border-radius: 999px; white-space: nowrap; }
+.deck-mrow .tag.red { color: var(--deck-bad); background: rgba(255, 107, 122, .12); }
+.deck-mrow .tag.amb { color: var(--deck-warn); background: rgba(245, 182, 78, .12); }
+.deck-mrow .tag.grn { color: var(--deck-green); background: rgba(55, 211, 153, .12); }
+.deck-mrow .xp { margin-left: auto; color: var(--deck-cyan); font-size: 11px; white-space: nowrap; }
+.deck-mrow .done { margin-left: auto; color: var(--deck-muted); font-size: 11px; white-space: nowrap; }
+
+/* ---------- footer keys ---------- */
+.deck-footkeys { display: flex; gap: 16px; font-size: 11px; color: var(--deck-muted); margin-top: 16px; flex-wrap: wrap; }
+.deck-footkeys kbd {
+  background: var(--deck-panel);
+  border: 1px solid var(--deck-line2);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 1px 6px;
+  color: var(--deck-muted2);
 }

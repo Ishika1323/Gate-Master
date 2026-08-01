@@ -10,6 +10,7 @@ import { buildMergedScheduleRows } from '../../utils/adaptiveSchedule';
 import { getSubjectById } from '../../data/subjects';
 import Badge from '../UI/Badge';
 import { getEffectiveToday } from '../../utils/dayBoundary';
+import { buildSubjectPriority, sortRowsByPriority, getFocusLevel, DEFAULT_WEAK_FOCUS } from '../../ai/prioritization';
 
 /**
  * TodaySchedulePanel
@@ -32,8 +33,24 @@ export default function TodaySchedulePanel({ currentDay, planProgress, studyPlan
         skipSession,
         markPyqPenaltyDone,
         getWeakestSubject,
+        topicStrengths,
+        pyqAttempts,
+        subjectStats,
+        completedSyllabusTopics,
+        settings,
     } = useAppStore();
     const isRegenerating = useScheduleStore(state => state.isLoading);
+
+    // Weak-area prioritization (scaled by the user's personalisation focus).
+    const focusKey = settings?.weakAreaFocus || DEFAULT_WEAK_FOCUS;
+    const focusLevel = getFocusLevel(focusKey);
+    const subjectPriority = buildSubjectPriority({
+        topicStrengths,
+        pyqAttempts,
+        subjectStats,
+        completedSyllabusTopics,
+        focus: focusKey,
+    });
 
     const handleRegenerateSchedule = () => {
         scheduleOptimizer.reoptimizeDailySchedule();
@@ -50,7 +67,10 @@ export default function TodaySchedulePanel({ currentDay, planProgress, studyPlan
     const aiSchedule = aiOverrides?.[currentDay];
 
     // ── Fallback: use built-in plan ──────────────────────────────────────────
-    const { mergedRows } = buildMergedScheduleRows(currentDay, currentDay, planProgress, studyPlan);
+    const { mergedRows: rawMergedRows } = buildMergedScheduleRows(currentDay, currentDay, planProgress, studyPlan);
+    const mergedRows = focusLevel.reorder
+        ? sortRowsByPriority(rawMergedRows, subjectPriority)
+        : rawMergedRows;
 
     const isSourceSessionDone = (dayNum, sessionId) => {
         const dayProg = planProgress.find(p => p.day === dayNum);
@@ -250,6 +270,7 @@ export default function TodaySchedulePanel({ currentDay, planProgress, studyPlan
                             const done = isSourceSessionDone(row.sourceDay, row.sourceSessionId);
                             const isCarry = row.kind === 'carry';
                             const meta = getSessionMeta(row.sourceSessionId);
+                            const isPriority = !done && subjectPriority[row.subject]?.isWeak;
 
                             return (
                                 <div
@@ -268,6 +289,11 @@ export default function TodaySchedulePanel({ currentDay, planProgress, studyPlan
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="flex-1 min-w-0">
                                             <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                                                {isPriority && (
+                                                    <span className="inline-flex items-center gap-0.5 text-[9px] font-bold uppercase tracking-wider text-red-700 bg-red-100 dark:bg-red-900/30 dark:text-red-300 px-1.5 py-0.5 rounded-full">
+                                                        <AlertTriangle size={9} /> Priority
+                                                    </span>
+                                                )}
                                                 {isCarry && <Badge variant="warning" size="sm" className="text-[9px]">Carry-over</Badge>}
                                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${meta.color}`}>
                                                     {meta.label}

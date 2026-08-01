@@ -57,8 +57,9 @@ export function useMasterStudyPlan() {
     return mergedStudyPlan;
 }
 
-/** Total day count of the active plan (custom plans may differ from 311). */
+/** Total day count of the active plan (dynamic for the default plan). */
 export function usePlanTotalDays() {
     const activePlanId = useAppStore(state => state.activePlanId);
-    return getPlanTotalDays(activePlanId);
+    const planStartDate = useAppStore(state => state.planStartDate);
+    return getPlanTotalDays(activePlanId, planStartDate);
 }

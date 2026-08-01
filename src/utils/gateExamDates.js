@@ -125,6 +125,22 @@ export async function resolveGateExamDatesAsync(now = new Date()) {
     return resolveInflight;
 }
 
+/**
+ * Synchronous GATE CSE exam date to anchor the study plan's end.
+ * Prefers an explicit VITE_GATE_CSE_DATE override, else the next CSE date
+ * (1st Sunday of February) on/after the plan start date.
+ */
+export function getExamDateForPlan(planStartISO, now = new Date()) {
+    const envCse = parseEnvDate(import.meta.env.VITE_GATE_CSE_DATE);
+    if (envCse) return envCse;
+    let start = now;
+    if (planStartISO) {
+        const d = new Date(`${planStartISO}T12:00:00`);
+        if (!Number.isNaN(d.getTime())) start = d;
+    }
+    return getUpcomingComputedDates(start).gateCse;
+}
+
 export function getDaysLeftLabel(examDate, now = new Date()) {
     const d = differenceInCalendarDays(startOfDay(examDate), startOfDay(now));
     if (d < 0) return { text: 'Ended', days: d };

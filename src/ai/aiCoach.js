@@ -1,6 +1,6 @@
 // AI Coach that provides daily tips, recommendations, and strategic advice
 
-import { getStudyPlanPhase, STUDY_PLAN_TOTAL_DAYS } from '../data/studyPlan';
+import { getStudyPlanPhase, getPlanTotalDays } from '../data/studyPlan';
 
 const motivationalMessages = [
     "You're making excellent progress! Stay focused and trust your preparation.",
@@ -28,7 +28,7 @@ export const aiCoach = {
             };
         }
         const phase = getStudyPlanPhase(currentDay, planStartISO);
-        const daysRemaining = STUDY_PLAN_TOTAL_DAYS - currentDay;
+        const daysRemaining = getPlanTotalDays(planStartISO) - currentDay;
 
         if (phase.key === 'exam') {
             return {
@@ -103,7 +103,7 @@ export const aiCoach = {
     // Strategic advice based on exam proximity and calendar phase.
     // planContext.totalDays overrides the built-in plan length for custom plans.
     getStrategicAdvice: (currentDay, planStartISO, planContext) => {
-        const totalDays = planContext?.totalDays || STUDY_PLAN_TOTAL_DAYS;
+        const totalDays = planContext?.totalDays || getPlanTotalDays(planStartISO);
         const daysRemaining = totalDays - currentDay;
         const fracLeft = daysRemaining / totalDays;
 

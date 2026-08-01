@@ -1,4 +1,4 @@
-import { defaultPlanStart, STUDY_PLAN_TOTAL_DAYS } from '../data/studyPlan';
+import { defaultPlanStart, getPlanTotalDays } from '../data/studyPlan';
 import { GATE_CS_SUBJECTS } from '../data/gateSubjects';
 import useAppStore from '../store/useAppStore';
 
@@ -55,7 +55,7 @@ export const progressCalculator = {
      * Tracks forward for the entire plan duration (e.g. 311 days until GATE)
      */
     getHeatmapData(planProgress, totalDays = null) {
-        if (!totalDays) totalDays = STUDY_PLAN_TOTAL_DAYS || 311;
+        if (!totalDays) totalDays = getPlanTotalDays(useAppStore.getState().planStartDate);
         const data = [];
         
         const planStartDate = getPlanStart();

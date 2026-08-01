@@ -8,6 +8,21 @@ import { supabase } from '../lib/supabase';
 import useScheduleStore from './useScheduleStore';
 import { scheduleOptimizer } from '../services/scheduleOptimizer';
 
+/**
+ * Normalize a plan-start date (e.g. from VITE_PLAN_START_DATE) to the canonical
+ * `YYYY-MM-DD` the rest of the app parses. Accepts already-canonical strings as
+ * well as common variants like `07/07/2026` or `2026/07/07`; returns null if the
+ * value can't be parsed so callers can fall back safely.
+ */
+function normalizePlanStartDate(value) {
+    if (!value || typeof value !== 'string') return null;
+    const s = value.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    const parsed = new Date(s);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}-${String(parsed.getDate()).padStart(2, '0')}`;
+}
+
 const useAppStore = create(
     persist(
         (set, get) => ({
@@ -95,8 +110,10 @@ const useAppStore = create(
             initializeCurrentDay: () => {
                 const state = get();
                 const today = getEffectiveToday();
-                const envStart = import.meta.env.VITE_PLAN_START_DATE;
-                
+                // Accept VITE_PLAN_START_DATE in canonical YYYY-MM-DD or common
+                // variants (e.g. 07/07/2026); anything unparseable is ignored.
+                const envStart = normalizePlanStartDate(import.meta.env.VITE_PLAN_START_DATE);
+
                 let activeStart = state.planStartDate;
 
                 // 1. Env Var Master Override (custom plans carry fixed dates —
@@ -133,9 +150,10 @@ const useAppStore = create(
                 const diffTime = today.getTime() - startDate.getTime();
                 const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
                 
-                // Current day is days since start + 1 (Day 1 is the start date)
-                const totalDays = getPlanTotalDays(state.activePlanId);
-                const calculatedDay = Math.min(Math.max(diffDays + 1, 1), totalDays);
+                // Current day is days since start + 1 (Day 1 is the start date),
+                // clamped to the active plan's length (dynamic start→exam window
+                // for the default plan, fixed span for custom plans).
+                const calculatedDay = Math.min(Math.max(diffDays + 1, 1), getPlanTotalDays(state.activePlanId, activeStart));
                 set({ currentDay: calculatedDay });
                 return calculatedDay;
             },
@@ -455,6 +473,9 @@ const useAppStore = create(
                 soundEnabled: true,
                 autoStartBreak: true,
                 autoStartWork: false,
+                // How strongly weak topics are prioritized over completed/new ones
+                // across the daily plan and the AI schedule ('balanced' | 'high' | 'aggressive').
+                weakAreaFocus: 'high',
             },
             updateSettings: (updates) => set({
                 settings: { ...get().settings, ...updates }
@@ -564,7 +585,7 @@ const useAppStore = create(
 
                 // Find the next available day to reschedule (2-5 days out)
                 const currentDay = get().currentDay;
-                const rescheduleDay = Math.min(currentDay + 3, getPlanTotalDays(get().activePlanId) - 1);
+                const rescheduleDay = Math.min(currentDay + 3, getPlanTotalDays(get().activePlanId, get().planStartDate) - 1);
                 entry.rescheduledTo = rescheduleDay;
 
                 const updated = [...get().skippedSessions, entry];
@@ -690,6 +711,22 @@ const useAppStore = create(
         }),
         {
             name: 'gate-study-planner',
+            version: 1,
+            migrate: (persistedState) => {
+                // v1: the 311-day plan is now anchored to start "today". Browsers that
+                // used an earlier build carry a stale persisted planStartDate (e.g. the
+                // old hardcoded anchor), which initializeCurrentDay would keep using —
+                // leaving the plan stuck on Day 100+ with a huge phantom backlog.
+                // migrate only runs when the stored version differs from 1 (earlier
+                // builds had no explicit version, so zustand persisted them as 0), so
+                // unconditionally clear the anchor here to re-anchor the plan to the
+                // current day on the next load.
+                if (persistedState) {
+                    persistedState.planStartDate = null;
+                    persistedState.currentDay = 1;
+                }
+                return persistedState;
+            },
             partialize: (state) => {
                 // We now PERSIST the session/user to ensure Guest Mode survives refreshes
                 // and to avoid layout flicker during slow auth SDK boot.

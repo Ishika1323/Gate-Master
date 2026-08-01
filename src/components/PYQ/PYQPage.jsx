@@ -216,7 +216,7 @@ export default function PYQPage() {
                                                         )}
                                                     </div>
                                                     <div className="text-xs text-slate-400 mt-1">
-                                                        {new Date(attempt.date).toLocaleDateString()}
+                                                        {new Date(attempt.date || attempt.timestamp).toLocaleDateString()}
                                                     </div>
                                                 </div>
                                                 <div className={`text-xl font-mono font-bold ${statusColor}`}>

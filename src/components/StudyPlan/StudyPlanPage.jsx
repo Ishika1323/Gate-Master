@@ -8,10 +8,23 @@ import { getSubjectById } from '../../data/subjects';
 import useAppStore from '../../store/useAppStore';
 import { buildMergedScheduleRows, countCompletedInRows, getBacklogDistributionSummary } from '../../utils/adaptiveSchedule';
 import { getEffectiveToday } from '../../utils/dayBoundary';
+import { buildSubjectPriority, sortRowsByPriority, getFocusLevel, DEFAULT_WEAK_FOCUS } from '../../ai/prioritization';
 
 export default function StudyPlanPage() {
-    const { currentDay, planProgress, toggleSessionComplete, initializeCurrentDay, activePlanId } =
+    const { currentDay, planProgress, toggleSessionComplete, initializeCurrentDay, activePlanId,
+        topicStrengths, pyqAttempts, subjectStats, completedSyllabusTopics, settings } =
         useAppStore();
+
+    // Weak-area prioritization (scaled by the personalisation focus setting).
+    const focusKey = settings?.weakAreaFocus || DEFAULT_WEAK_FOCUS;
+    const focusLevel = getFocusLevel(focusKey);
+    const subjectPriority = useMemo(() => buildSubjectPriority({
+        topicStrengths,
+        pyqAttempts,
+        subjectStats,
+        completedSyllabusTopics,
+        focus: focusKey,
+    }), [topicStrengths, pyqAttempts, subjectStats, completedSyllabusTopics, focusKey]);
     const studyPlan = useMasterStudyPlan();
     const totalPlanDays = studyPlan.length;
     const planMeta = getPlanMeta(activePlanId);
@@ -133,12 +146,15 @@ export default function StudyPlanPage() {
     };
 
     const {
-        mergedRows,
+        mergedRows: rawMergedRows,
         assignedCarryCount,
         backlogTotal,
         spreadStart,
         spreadEnd,
     } = buildMergedScheduleRows(viewDay, currentDay, planProgress, studyPlan);
+    const mergedRows = focusLevel.reorder
+        ? sortRowsByPriority(rawMergedRows, subjectPriority)
+        : rawMergedRows;
 
     const currentDayStats = getMergedDayStats(viewDay);
     const overallStats = getOverallStats();
@@ -162,7 +178,9 @@ export default function StudyPlanPage() {
                         {activePlanId ? planMeta.name : `${totalPlanDays}-Day Planner`}
                     </h1>
                     <p className="text-slate-500 mt-1">
-                        {planMeta.description}
+                        {activePlanId
+                            ? planMeta.description
+                            : 'Full GATE CSE roadmap from your start date to exam day: phased, subject-wise sessions with daily math, aptitude, and revision.'}
                     </p>
                 </div>
 
@@ -253,7 +271,8 @@ export default function StudyPlanPage() {
                                 const subject = getSubjectById(row.subject);
                                 const done = isSourceSessionDone(row.sourceDay, row.sourceSessionId);
                                 const isCarry = row.kind === 'carry';
-                                
+                                const isPriority = !done && subjectPriority[row.subject]?.isWeak;
+
                                 // Session type labels and colors
                                 const sessionTypeLabels = {
                                     'L1': { label: 'Lecture 1', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' },
@@ -288,6 +307,11 @@ export default function StudyPlanPage() {
                                         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                                             <div className="flex-1">
                                                 <div className="flex flex-wrap items-center gap-3 mb-1">
+                                                    {isPriority && (
+                                                        <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-red-700 bg-red-100 dark:bg-red-900/30 dark:text-red-300 px-2 py-0.5 rounded-full">
+                                                            <AlertTriangle size={10} /> Priority
+                                                        </span>
+                                                    )}
                                                     {isCarry && (
                                                         <Badge variant="warning" size="sm" className="text-[10px] uppercase tracking-wider">
                                                             Carry-over
